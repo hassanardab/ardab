@@ -256,7 +256,7 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "1.4",
+    "version": "1.4.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ardab",
@@ -336,7 +336,12 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
 
 === ./src/types/index.ts ===
 export type PaymentMethod = "CASH" | "BANK";
-export type TransactionType = "INCOME" | "EXPENSE" | "BILL" | "PAYROLL";
+export type TransactionType =
+  | "INCOME"
+  | "EXPENSE"
+  | "BILL"
+  | "PAYROLL"
+  | "TRANSFER";
 
 export interface Employee {
   id: string;
@@ -538,7 +543,6 @@ const styles = StyleSheet.create({
 });
 
 === ./src/app/index.tsx ===
-//src/app/index.tsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -603,7 +607,8 @@ export default function DashboardScreen() {
       type: txType,
       method: txMethod,
       amount: amountNum,
-      description: txDesc || "بدون وصف",
+      description:
+        txDesc || (txType === "TRANSFER" ? "تحويل داخلي" : "بدون وصف"),
       date: new Date().toISOString(),
     });
     setIsModalVisible(false);
@@ -636,7 +641,6 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* We intercept the button press so it doesn't trigger the card's navigation */}
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={(e) => {
@@ -675,31 +679,37 @@ export default function DashboardScreen() {
 
             <Text style={styles.modalLabel}>نوع المعاملة</Text>
             <View style={styles.row}>
-              {["EXPENSE", "INCOME", "PAYROLL", "BILL"].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.chip, txType === type && styles.chipActive]}
-                  onPress={() => setTxType(type as TransactionType)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      txType === type && styles.chipTextActive,
-                    ]}
+              {["EXPENSE", "INCOME", "PAYROLL", "BILL", "TRANSFER"].map(
+                (type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.chip, txType === type && styles.chipActive]}
+                    onPress={() => setTxType(type as TransactionType)}
                   >
-                    {type === "INCOME"
-                      ? "دخل"
-                      : type === "EXPENSE"
-                        ? "مصروف"
-                        : type === "PAYROLL"
-                          ? "رواتب"
-                          : "فاتورة"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        txType === type && styles.chipTextActive,
+                      ]}
+                    >
+                      {type === "INCOME"
+                        ? "دخل"
+                        : type === "EXPENSE"
+                          ? "مصروف"
+                          : type === "PAYROLL"
+                            ? "رواتب"
+                            : type === "BILL"
+                              ? "فاتورة"
+                              : "تحويل"}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              )}
             </View>
 
-            <Text style={styles.modalLabel}>طريقة الدفع</Text>
+            <Text style={styles.modalLabel}>
+              {txType === "TRANSFER" ? "تحويل إلى" : "طريقة الدفع"}
+            </Text>
             <View style={styles.row}>
               {["CASH", "BANK"].map((method) => (
                 <TouchableOpacity
@@ -716,7 +726,13 @@ export default function DashboardScreen() {
                       txMethod === method && styles.chipTextActive,
                     ]}
                   >
-                    {method === "CASH" ? "نقدي" : "بنكي"}
+                    {method === "CASH"
+                      ? txType === "TRANSFER"
+                        ? "الصندوق (سحب من البنك)"
+                        : "نقدي"
+                      : txType === "TRANSFER"
+                        ? "البنك (إيداع نقدي)"
+                        : "بنكي"}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -1161,6 +1177,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "الرئيسية",
+          headerTitleAlign: "center",
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="dashboard" size={24} color={color} />
           ),
@@ -2043,7 +2060,7 @@ interface AppState {
   employees: Employee[];
   addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
   addTransaction: (transaction: Transaction) => void;
-  removeTransaction: (transactionId: string) => void; // New method
+  removeTransaction: (transactionId: string) => void;
   addEmployee: (employee: Employee) => void;
 }
 
@@ -2075,6 +2092,21 @@ export const useStore = create<AppState>()(
         set((state) => {
           const updatedProjects = state.projects.map((proj) => {
             if (proj.id === transaction.projectId) {
+              // Handle Transfers between Bank and Cash
+              if (transaction.type === "TRANSFER") {
+                const isToBank = transaction.method === "BANK";
+                return {
+                  ...proj,
+                  currentBank:
+                    proj.currentBank +
+                    (isToBank ? transaction.amount : -transaction.amount),
+                  currentCash:
+                    proj.currentCash +
+                    (isToBank ? -transaction.amount : transaction.amount),
+                };
+              }
+
+              // Handle standard Income/Expenses
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? -transaction.amount
@@ -2099,7 +2131,6 @@ export const useStore = create<AppState>()(
           };
         }),
 
-      // New: Remove a transaction and reverse balance impacts
       removeTransaction: (transactionId) =>
         set((state) => {
           const transaction = state.transactions.find(
@@ -2109,8 +2140,22 @@ export const useStore = create<AppState>()(
 
           const updatedProjects = state.projects.map((proj) => {
             if (proj.id === transaction.projectId) {
+              // Reverse Transfer logic
+              if (transaction.type === "TRANSFER") {
+                const isToBank = transaction.method === "BANK";
+                return {
+                  ...proj,
+                  currentBank:
+                    proj.currentBank -
+                    (isToBank ? transaction.amount : -transaction.amount),
+                  currentCash:
+                    proj.currentCash -
+                    (isToBank ? -transaction.amount : transaction.amount),
+                };
+              }
+
+              // Reverse standard Income/Expense logic
               const isDeduction = transaction.type !== "INCOME";
-              // Reverse the math
               const amountChange = isDeduction
                 ? transaction.amount
                 : -transaction.amount;

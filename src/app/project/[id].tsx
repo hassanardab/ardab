@@ -1,4 +1,5 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+//src/app/project/[id].tsx
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   FlatList,
   StyleSheet,
@@ -26,56 +27,64 @@ export default function ProjectDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          style={styles.reportBtn}
-          onPress={() => router.push(`/project/${project.id}/report`)}
-        >
-          <Text style={styles.reportBtnText}>معاينة التقرير</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{project.name}</Text>
-      </View>
+    <>
+      <Stack.Screen
+        options={{
+          headerTitleAlign: "center",
+          headerTitle: project ? project.name : "المشروع",
+        }}
+      />
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.reportBtn}
+            onPress={() => router.push(`/project/${project.id}/report`)}
+          >
+            <Text style={styles.reportBtnText}>معاينة التقرير</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>العمليات</Text>
+        </View>
 
-      <FlatList
-        data={projectTransactions.reverse()}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 24 }}
-        renderItem={({ item }) => (
-          <View style={styles.txCard}>
-            <View style={styles.txRow}>
-              <TouchableOpacity
-                onPress={() => removeTransaction(item.id)}
-                style={styles.deleteBtn}
-              >
-                <Text style={styles.deleteBtnText}>حذف</Text>
-              </TouchableOpacity>
+        <FlatList
+          data={projectTransactions.reverse()}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          renderItem={({ item }) => (
+            <View style={styles.txCard}>
+              <View style={styles.txRow}>
+                <TouchableOpacity
+                  onPress={() => removeTransaction(item.id)}
+                  style={styles.deleteBtn}
+                >
+                  <Text style={styles.deleteBtnText}>حذف</Text>
+                </TouchableOpacity>
 
-              <View style={styles.txInfo}>
-                <Text style={styles.txDesc}>{item.description}</Text>
-                <Text style={styles.txDate}>
-                  {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
-                  {item.method === "CASH" ? "نقدي" : "بنكي"}
+                <View style={styles.txInfo}>
+                  <Text style={styles.txDesc}>{item.description}</Text>
+                  <Text style={styles.txDate}>
+                    {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
+                    {item.method === "CASH" ? "نقدي" : "بنكي"}
+                  </Text>
+                </View>
+
+                <Text
+                  style={[
+                    styles.txAmount,
+                    item.type === "INCOME" ? styles.income : styles.expense,
+                  ]}
+                >
+                  {item.type === "INCOME" ? "+" : "-"}$
+                  {formatCurrency(item.amount)}
                 </Text>
               </View>
-
-              <Text
-                style={[
-                  styles.txAmount,
-                  item.type === "INCOME" ? styles.income : styles.expense,
-                ]}
-              >
-                {item.type === "INCOME" ? "+" : "-"}$
-                {formatCurrency(item.amount)}
-              </Text>
             </View>
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>لا توجد معاملات بعد</Text>
-        }
-      />
-    </View>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>لا توجد معاملات بعد</Text>
+          }
+        />
+      </View>
+    </>
   );
 }
 
