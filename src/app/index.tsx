@@ -1,98 +1,143 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useStore } from "../store/useStore";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function DashboardScreen() {
+  const { projects, addProject, addTransaction } = useStore();
+  const [newProjectName, setNewProjectName] = useState("");
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+  const handleCreateProject = () => {
+    if (!newProjectName) return;
+    addProject({
+      id: Date.now().toString(),
+      name: newProjectName,
+      initialCash: 0,
+      initialBank: 0,
+      createdAt: new Date().toISOString(),
+    });
+    setNewProjectName("");
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <ScrollView style={styles.container}>
+      <Text style={styles.header}>Active Projects</Text>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      {projects.map((project) => (
+        <View key={project.id} style={styles.card}>
+          <Text style={styles.cardTitle}>{project.name}</Text>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceBlock}>
+              <Text style={styles.label}>Cash Balance (Verify)</Text>
+              <Text style={styles.cashAmount}>
+                ${project.currentCash.toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.balanceBlock}>
+              <Text style={styles.label}>Bank Balance (Verify)</Text>
+              <Text style={styles.bankAmount}>
+                ${project.currentBank.toFixed(2)}
+              </Text>
+            </View>
+          </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => {
+              addTransaction({
+                id: Date.now().toString(),
+                projectId: project.id,
+                type: "EXPENSE",
+                method: "CASH",
+                amount: 150,
+                description: "Lumber materials",
+                date: new Date().toISOString(),
+              });
+            }}
+          >
+            <Text style={styles.actionBtnText}>+ Add Transaction</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="New Project Name"
+          value={newProjectName}
+          onChangeText={setNewProjectName}
+        />
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={handleCreateProject}
+        >
+          <Text style={styles.primaryBtnText}>Create Project</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  container: { flex: 1, backgroundColor: "#f3f4f6", padding: 16 },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 16,
+    color: "#111827",
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  card: {
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  cardTitle: { fontSize: 18, fontWeight: "600", marginBottom: 12 },
+  balanceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
-  title: {
-    textAlign: 'center',
+  balanceBlock: { flex: 1 },
+  label: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
+  cashAmount: { fontSize: 20, fontWeight: "bold", color: "#059669" },
+  bankAmount: { fontSize: 20, fontWeight: "bold", color: "#2563eb" },
+  actionBtn: {
+    backgroundColor: "#f3f4f6",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
   },
-  code: {
-    textTransform: 'uppercase',
+  actionBtnText: { color: "#374151", fontWeight: "500" },
+  form: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: "white",
+    borderRadius: 12,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  input: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
+  primaryBtn: {
+    backgroundColor: "#111827",
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  primaryBtnText: { color: "white", fontWeight: "600" },
 });
