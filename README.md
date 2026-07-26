@@ -54,3 +54,7 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+# create a codebase file
+
+rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|node*modules|dist|build|package-lock.json|tree.txt|codebase.txt'; find . -type d \( -name .expo -o -name android -o -name ios -o -name assets -o -name documents -o -name .git -o -name node_modules -o -name .idea -o -name dist -o -name build \) -prune -o -type f ! -name "tree.txt" ! -name "codebase.txt" ! -name "package-lock.json" ! -name "*.png" ! -name "_.jpg" ! -name "_.svg" ! -name "\_.ttf" ! -name "\*.log" -print | while read -r file; do echo -e "\n=== $file ==="; cat "$file"; done) > codebase.txt

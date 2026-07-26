@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "ArdabManager",
-    "slug": "ArdabManager",
-    "version": "1.0.0",
+    "name": "Ardab",
+    "slug": "Ardab",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ardabmanager",
+    "scheme": "ardab",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.hassanardab.ardab"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +18,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.ArdabManager"
     },
     "web": {
       "output": "static",

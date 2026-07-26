@@ -10,11 +10,14 @@
 │   └── reset-project.js
 ├── src
 │   ├── app
-│   │   ├── explore.tsx
 │   │   ├── index.tsx
 │   │   ├── _layout.tsx
 │   │   ├── messages.tsx
 │   │   ├── profile.tsx
+│   │   ├── project
+│   │   │   ├── [id]
+│   │   │   │   └── report.tsx
+│   │   │   └── [id].tsx
 │   │   └── reports.tsx
 │   ├── components
 │   │   ├── animated-icon.module.css
@@ -40,11 +43,13 @@
 │   │   └── PdfService.ts
 │   ├── store
 │   │   └── useStore.ts
-│   └── types
-│       └── index.ts
+│   ├── types
+│   │   └── index.ts
+│   └── utils
+│       └── format.ts
 └── tsconfig.json
 
-11 directories, 34 files
+14 directories, 36 files
 
 === ./LICENSE ===
 The MIT License (MIT)
@@ -71,11 +76,12 @@ SOFTWARE.
 
 === ./package.json ===
 {
-  "name": "ardabmanager",
+  "name": "ardab",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.7",
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.18.14",
     "@react-navigation/native": "^7.3.14",
@@ -102,6 +108,7 @@ SOFTWARE.
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
+    "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.0",
     "zustand": "^5.0.14"
   },
@@ -112,8 +119,8 @@ SOFTWARE.
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },
@@ -240,18 +247,23 @@ Join our community of developers creating universal apps.
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
+# create a codebase file
+
+rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|node*modules|dist|build|package-lock.json|tree.txt|codebase.txt'; find . -type d \( -name .expo -o -name android -o -name ios -o -name assets -o -name documents -o -name .git -o -name node_modules -o -name .idea -o -name dist -o -name build \) -prune -o -type f ! -name "tree.txt" ! -name "codebase.txt" ! -name "package-lock.json" ! -name "*.png" ! -name "_.jpg" ! -name "_.svg" ! -name "\_.ttf" ! -name "\*.log" -print | while read -r file; do echo -e "\n=== $file ==="; cat "$file"; done) > codebase.txt
+
 === ./app.json ===
 {
   "expo": {
-    "name": "ArdabManager",
-    "slug": "ArdabManager",
-    "version": "1.0.0",
+    "name": "Ardab",
+    "slug": "Ardab",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ardabmanager",
+    "scheme": "ardab",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.hassanardab.ardab"
     },
     "android": {
       "adaptiveIcon": {
@@ -260,7 +272,8 @@ Join our community of developers creating universal apps.
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.ArdabManager"
     },
     "web": {
       "output": "static",
@@ -354,9 +367,81 @@ export interface Project {
 }
 
 === ./src/services/PdfService.ts ===
+import { formatCurrency } from "@/utils/format";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Project, Transaction } from "../types";
+
+export const getFinancialReportHtml = (
+  project: Project,
+  transactions: Transaction[],
+) => {
+  const projectTransactions = transactions.filter(
+    (t) => t.projectId === project.id,
+  );
+  const totalExpenses = projectTransactions
+    .filter((t) => t.type !== "INCOME")
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  return `
+    <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; direction: rtl; text-align: right; }
+          h1 { text-align: center; color: #1a365d; }
+          .summary-box { background-color: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+          .balance { font-size: 18px; font-weight: bold; margin: 5px 0; }
+          .cash { color: #047857; }
+          .bank { color: #1d4ed8; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; }
+          th { background-color: #f1f5f9; font-weight: bold; }
+          .amount-out { color: #ef4444; direction: ltr; display: inline-block; }
+          .amount-in { color: #10b981; direction: ltr; display: inline-block; }
+        </style>
+      </head>
+      <body>
+        <h1>التقرير المالي: ${project.name}</h1>
+        <div class="summary-box">
+          <h2>مراجعة الأرصدة</h2>
+          <p class="balance cash">النقد الفعلي المتاح: $${formatCurrency(project.currentCash)}</p>
+          <p class="balance bank">رصيد الحساب البنكي: $${formatCurrency(project.currentBank)}</p>
+          <p style="margin-top: 10px;"><strong>إجمالي المصروفات: $${formatCurrency(totalExpenses)}</strong></p>
+        </div>
+        <h2>سجل المعاملات</h2>
+        <table>
+          <tr><th>التاريخ</th><th>النوع</th><th>الطريقة</th><th>الوصف</th><th>المبلغ</th></tr>
+          ${projectTransactions
+            .map(
+              (t) => `
+            <tr>
+              <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
+              <td>${t.type === "INCOME" ? "دخل" : t.type === "EXPENSE" ? "مصروف" : t.type === "PAYROLL" ? "رواتب" : "فاتورة"}</td>
+              <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
+              <td>${t.description} ${t.vendorName ? `(${t.vendorName})` : ""}</td>
+              <td class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
+                ${t.type === "INCOME" ? "+" : "-"}$${formatCurrency(t.amount)}
+              </td>
+            </tr>
+          `,
+            )
+            .join("")}
+        </table>
+      </body>
+    </html>
+  `;
+};
+
+export const exportPdf = async (html: string) => {
+  try {
+    const { uri } = await Print.printToFileAsync({ html });
+    await Sharing.shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+  } catch (error) {
+    console.error("Error exporting PDF:", error);
+  }
+};
 
 export const generateFinancialReport = async (
   project: Project,
@@ -371,50 +456,51 @@ export const generateFinancialReport = async (
     .reduce((sum, t) => sum + t.amount, 0);
 
   const html = `
-    <html>
+    <html dir="rtl" lang="ar">
       <head>
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; direction: rtl; text-align: right; }
           h1 { text-align: center; color: #1a365d; }
           .summary-box { background-color: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
           .balance { font-size: 18px; font-weight: bold; margin: 5px 0; }
           .cash { color: #047857; }
           .bank { color: #1d4ed8; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: left; }
+          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; }
           th { background-color: #f1f5f9; font-weight: bold; }
-          .amount-out { color: #ef4444; }
-          .amount-in { color: #10b981; }
+          .amount-out { color: #ef4444; direction: ltr; display: inline-block; }
+          .amount-in { color: #10b981; direction: ltr; display: inline-block; }
         </style>
       </head>
       <body>
-        <h1>Financial Report: ${project.name}</h1>
+        <h1>التقرير المالي: ${project.name}</h1>
         
         <div class="summary-box">
-          <h2>Reconciliation Check</h2>
-          <p>Please verify these amounts physically:</p>
-          <p class="balance cash">Physical Cash on Hand: $${project.currentCash.toFixed(2)}</p>
-          <p class="balance bank">Bank Account Balance: $${project.currentBank.toFixed(2)}</p>
-          <p style="margin-top: 10px;"><strong>Total Expenditures: $${totalExpenses.toFixed(2)}</strong></p>
+          <h2>مراجعة الأرصدة</h2>
+          <p>يرجى التحقق من هذه المبالغ فعلياً:</p>
+          <p class="balance cash">النقد الفعلي المتاح: $${project.currentCash.toFixed(2)}</p>
+          <p class="balance bank">رصيد الحساب البنكي: $${project.currentBank.toFixed(2)}</p>
+          <p style="margin-top: 10px;"><strong>إجمالي المصروفات: $${totalExpenses.toFixed(2)}</strong></p>
         </div>
 
-        <h2>Transaction Ledger</h2>
+        <h2>سجل المعاملات</h2>
         <table>
           <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Method</th>
-            <th>Description</th>
-            <th>Amount</th>
+            <th>التاريخ</th>
+            <th>النوع</th>
+            <th>الطريقة</th>
+            <th>الوصف</th>
+            <th>المبلغ</th>
           </tr>
           ${projectTransactions
             .map(
               (t) => `
             <tr>
-              <td>${new Date(t.date).toLocaleDateString()}</td>
-              <td>${t.type}</td>
-              <td>${t.method}</td>
+              <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
+              <td>${t.type === "INCOME" ? "دخل" : t.type === "EXPENSE" ? "مصروف" : t.type === "PAYROLL" ? "رواتب" : "فاتورة"}</td>
+              <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
               <td>${t.description} ${t.vendorName ? `(${t.vendorName})` : ""}</td>
               <td class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
                 ${t.type === "INCOME" ? "+" : "-"}$${t.amount.toFixed(2)}
@@ -451,191 +537,13 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
-=== ./src/app/explore.tsx ===
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
-  const theme = useTheme();
-
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
-
-  return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
-
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
-
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
-
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
-  );
-}
-
-const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
-  },
-});
-
 === ./src/app/index.tsx ===
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -644,10 +552,22 @@ import {
   View,
 } from "react-native";
 import { useStore } from "../store/useStore";
+import { PaymentMethod, TransactionType } from "../types";
+import { formatCurrency } from "../utils/format";
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const { projects, addProject, addTransaction } = useStore();
   const [newProjectName, setNewProjectName] = useState("");
+
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
+  const [txType, setTxType] = useState<TransactionType>("EXPENSE");
+  const [txMethod, setTxMethod] = useState<PaymentMethod>("CASH");
+  const [txAmount, setTxAmount] = useState("");
+  const [txDesc, setTxDesc] = useState("");
 
   const handleCreateProject = () => {
     if (!newProjectName) return;
@@ -661,62 +581,175 @@ export default function DashboardScreen() {
     setNewProjectName("");
   };
 
+  const openTransactionModal = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setIsModalVisible(true);
+    setTxAmount("");
+    setTxDesc("");
+  };
+
+  const handleAddTransaction = () => {
+    const amountNum = Number(txAmount.replace(/,/g, ""));
+    if (!selectedProjectId || !amountNum || isNaN(amountNum)) return;
+
+    addTransaction({
+      id: Date.now().toString(),
+      projectId: selectedProjectId,
+      type: txType,
+      method: txMethod,
+      amount: amountNum,
+      description: txDesc || "بدون وصف",
+      date: new Date().toISOString(),
+    });
+    setIsModalVisible(false);
+  };
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Active Projects</Text>
+      <Text style={styles.header}>المشاريع النشطة</Text>
 
       {projects.map((project) => (
-        <View key={project.id} style={styles.card}>
+        <TouchableOpacity
+          key={project.id}
+          style={styles.card}
+          onPress={() => router.push(`/project/${project.id}`)}
+          activeOpacity={0.7}
+        >
           <Text style={styles.cardTitle}>{project.name}</Text>
-
           <View style={styles.balanceRow}>
             <View style={styles.balanceBlock}>
-              <Text style={styles.label}>Cash Balance (Verify)</Text>
+              <Text style={styles.label}>الرصيد النقدي</Text>
               <Text style={styles.cashAmount}>
-                ${project.currentCash.toFixed(2)}
+                ${formatCurrency(project.currentCash)}
               </Text>
             </View>
             <View style={styles.balanceBlock}>
-              <Text style={styles.label}>Bank Balance (Verify)</Text>
+              <Text style={styles.label}>الرصيد البنكي</Text>
               <Text style={styles.bankAmount}>
-                ${project.currentBank.toFixed(2)}
+                ${formatCurrency(project.currentBank)}
               </Text>
             </View>
           </View>
 
+          {/* We intercept the button press so it doesn't trigger the card's navigation */}
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => {
-              addTransaction({
-                id: Date.now().toString(),
-                projectId: project.id,
-                type: "EXPENSE",
-                method: "CASH",
-                amount: 150,
-                description: "Lumber materials",
-                date: new Date().toISOString(),
-              });
+            onPress={(e) => {
+              e.stopPropagation();
+              openTransactionModal(project.id);
             }}
           >
-            <Text style={styles.actionBtnText}>+ Add Transaction</Text>
+            <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       ))}
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="New Project Name"
+          placeholder="اسم المشروع الجديد"
           value={newProjectName}
           onChangeText={setNewProjectName}
+          textAlign="right"
         />
         <TouchableOpacity
           style={styles.primaryBtn}
           onPress={handleCreateProject}
         >
-          <Text style={styles.primaryBtnText}>Create Project</Text>
+          <Text style={styles.primaryBtnText}>إنشاء مشروع</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={isModalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalHeader}>إضافة معاملة جديدة</Text>
+
+            <Text style={styles.modalLabel}>نوع المعاملة</Text>
+            <View style={styles.row}>
+              {["EXPENSE", "INCOME", "PAYROLL", "BILL"].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.chip, txType === type && styles.chipActive]}
+                  onPress={() => setTxType(type as TransactionType)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      txType === type && styles.chipTextActive,
+                    ]}
+                  >
+                    {type === "INCOME"
+                      ? "دخل"
+                      : type === "EXPENSE"
+                        ? "مصروف"
+                        : type === "PAYROLL"
+                          ? "رواتب"
+                          : "فاتورة"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.modalLabel}>طريقة الدفع</Text>
+            <View style={styles.row}>
+              {["CASH", "BANK"].map((method) => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.chip,
+                    txMethod === method && styles.chipActive,
+                  ]}
+                  onPress={() => setTxMethod(method as PaymentMethod)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      txMethod === method && styles.chipTextActive,
+                    ]}
+                  >
+                    {method === "CASH" ? "نقدي" : "بنكي"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="المبلغ"
+              keyboardType="numeric"
+              value={txAmount}
+              onChangeText={setTxAmount}
+              textAlign="right"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="الوصف (مواد، مورد، الخ)"
+              value={txDesc}
+              onChangeText={setTxDesc}
+              textAlign="right"
+            />
+
+            <View style={[styles.row, { marginTop: 16 }]}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.saveBtn]}
+                onPress={handleAddTransaction}
+              >
+                <Text style={styles.saveBtnText}>حفظ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={() => setIsModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
@@ -728,6 +761,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 16,
     color: "#111827",
+    textAlign: "right",
   },
   card: {
     backgroundColor: "white",
@@ -739,13 +773,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  cardTitle: { fontSize: 18, fontWeight: "600", marginBottom: 12 },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+    textAlign: "right",
+  },
   balanceRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  balanceBlock: { flex: 1 },
+  balanceBlock: { flex: 1, alignItems: "flex-start" },
   label: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
   cashAmount: { fontSize: 20, fontWeight: "bold", color: "#059669" },
   bankAmount: { fontSize: 20, fontWeight: "bold", color: "#2563eb" },
@@ -768,6 +807,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
+    textAlign: "right",
+    backgroundColor: "#fafafa",
   },
   primaryBtn: {
     backgroundColor: "#111827",
@@ -776,6 +817,52 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryBtnText: { color: "white", fontWeight: "600" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "right",
+  },
+  modalLabel: {
+    fontSize: 14,
+    color: "#4b5563",
+    marginBottom: 8,
+    textAlign: "right",
+    marginTop: 8,
+  },
+  row: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  chipActive: { backgroundColor: "#dbeafe", borderColor: "#3b82f6" },
+  chipText: { color: "#4b5563", fontSize: 14 },
+  chipTextActive: { color: "#1d4ed8", fontWeight: "bold" },
+  modalBtn: { flex: 1, padding: 14, borderRadius: 8, alignItems: "center" },
+  cancelBtn: { backgroundColor: "#f3f4f6", marginRight: 8 },
+  cancelBtnText: { color: "#374151", fontWeight: "600" },
+  saveBtn: { backgroundColor: "#111827" },
+  saveBtnText: { color: "white", fontWeight: "600" },
 });
 
 === ./src/app/messages.tsx ===
@@ -791,6 +878,197 @@ export default function MessagesScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+});
+
+=== ./src/app/project/[id].tsx ===
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useStore } from "../../store/useStore";
+import { formatCurrency } from "../../utils/format";
+
+export default function ProjectDetailScreen() {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+  const { projects, transactions, removeTransaction } = useStore();
+
+  const project = projects.find((p) => p.id === id);
+  const projectTransactions = transactions.filter((t) => t.projectId === id);
+
+  if (!project) {
+    return (
+      <View style={styles.center}>
+        <Text>المشروع غير موجود</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          style={styles.reportBtn}
+          onPress={() => router.push(`/project/${project.id}/report`)}
+        >
+          <Text style={styles.reportBtnText}>معاينة التقرير</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{project.name}</Text>
+      </View>
+
+      <FlatList
+        data={projectTransactions.reverse()}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        renderItem={({ item }) => (
+          <View style={styles.txCard}>
+            <View style={styles.txRow}>
+              <TouchableOpacity
+                onPress={() => removeTransaction(item.id)}
+                style={styles.deleteBtn}
+              >
+                <Text style={styles.deleteBtnText}>حذف</Text>
+              </TouchableOpacity>
+
+              <View style={styles.txInfo}>
+                <Text style={styles.txDesc}>{item.description}</Text>
+                <Text style={styles.txDate}>
+                  {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
+                  {item.method === "CASH" ? "نقدي" : "بنكي"}
+                </Text>
+              </View>
+
+              <Text
+                style={[
+                  styles.txAmount,
+                  item.type === "INCOME" ? styles.income : styles.expense,
+                ]}
+              >
+                {item.type === "INCOME" ? "+" : "-"}$
+                {formatCurrency(item.amount)}
+              </Text>
+            </View>
+          </View>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>لا توجد معاملات بعد</Text>
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f3f4f6", padding: 16 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#111827" },
+  reportBtn: {
+    backgroundColor: "#2563eb",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  reportBtnText: { color: "white", fontWeight: "600" },
+  txCard: {
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  txRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  txInfo: { flex: 1, alignItems: "flex-end", paddingRight: 16 },
+  txDesc: { fontSize: 16, fontWeight: "500", color: "#374151" },
+  txDate: { fontSize: 12, color: "#6b7280", marginTop: 4 },
+  txAmount: { fontSize: 18, fontWeight: "bold" },
+  income: { color: "#10b981" },
+  expense: { color: "#ef4444" },
+  deleteBtn: {
+    backgroundColor: "#fee2e2",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  deleteBtnText: { color: "#dc2626", fontWeight: "600", fontSize: 12 },
+  emptyText: { textAlign: "center", color: "#6b7280", marginTop: 40 },
+});
+
+=== ./src/app/project/[id]/report.tsx ===
+import { useLocalSearchParams } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { WebView } from "react-native-webview";
+import {
+  exportPdf,
+  getFinancialReportHtml,
+} from "../../../services/PdfService";
+import { useStore } from "../../../store/useStore";
+
+export default function ReportPreviewScreen() {
+  const { id } = useLocalSearchParams();
+  const { projects, transactions } = useStore();
+
+  const project = projects.find((p) => p.id === id);
+
+  if (!project) {
+    return (
+      <View style={styles.center}>
+        <Text>المشروع غير موجود</Text>
+      </View>
+    );
+  }
+
+  const htmlContent = getFinancialReportHtml(project, transactions);
+
+  return (
+    <View style={styles.container}>
+      <WebView
+        source={{ html: htmlContent }}
+        style={styles.webview}
+        originWhitelist={["*"]}
+      />
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.exportBtn}
+          onPress={() => exportPdf(htmlContent)}
+        >
+          <Text style={styles.exportBtnText}>تصدير PDF</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  webview: { flex: 1, backgroundColor: "transparent" },
+  footer: {
+    padding: 16,
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+  },
+  exportBtn: {
+    backgroundColor: "#111827",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  exportBtnText: { color: "white", fontSize: 16, fontWeight: "bold" },
 });
 
 === ./src/app/reports.tsx ===
@@ -859,6 +1137,7 @@ const styles = StyleSheet.create({
 });
 
 === ./src/app/_layout.tsx ===
+import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useColorScheme } from "react-native";
 
@@ -873,10 +1152,50 @@ export default function TabLayout() {
         tabBarStyle: { backgroundColor: "#fff" },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
-      <Tabs.Screen name="reports" options={{ title: "Reports" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-      <Tabs.Screen name="messages" options={{ title: "Messages" }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "الرئيسية",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="dashboard" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: "التقارير",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="analytics" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "الملف الشخصي",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="person" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "الرسائل",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="message" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* Hides the entire project directory from the tab bar */}
+      <Tabs.Screen
+        name="project"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
@@ -1569,6 +1888,11 @@ const styles = StyleSheet.create({
   },
 });
 
+=== ./src/utils/format.ts ===
+export const formatCurrency = (amount: number) => {
+  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
 === ./src/hooks/use-color-scheme.web.ts ===
 import { useEffect, useState } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
@@ -1690,6 +2014,7 @@ interface AppState {
   employees: Employee[];
   addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
   addTransaction: (transaction: Transaction) => void;
+  removeTransaction: (transactionId: string) => void; // New method
   addEmployee: (employee: Employee) => void;
 }
 
@@ -1719,14 +2044,47 @@ export const useStore = create<AppState>()(
 
       addTransaction: (transaction) =>
         set((state) => {
-          // Update the specific project's balances based on the transaction
           const updatedProjects = state.projects.map((proj) => {
             if (proj.id === transaction.projectId) {
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? -transaction.amount
                 : transaction.amount;
+              return {
+                ...proj,
+                currentCash:
+                  transaction.method === "CASH"
+                    ? proj.currentCash + amountChange
+                    : proj.currentCash,
+                currentBank:
+                  transaction.method === "BANK"
+                    ? proj.currentBank + amountChange
+                    : proj.currentBank,
+              };
+            }
+            return proj;
+          });
+          return {
+            transactions: [...state.transactions, transaction],
+            projects: updatedProjects,
+          };
+        }),
 
+      // New: Remove a transaction and reverse balance impacts
+      removeTransaction: (transactionId) =>
+        set((state) => {
+          const transaction = state.transactions.find(
+            (t) => t.id === transactionId,
+          );
+          if (!transaction) return state;
+
+          const updatedProjects = state.projects.map((proj) => {
+            if (proj.id === transaction.projectId) {
+              const isDeduction = transaction.type !== "INCOME";
+              // Reverse the math
+              const amountChange = isDeduction
+                ? transaction.amount
+                : -transaction.amount;
               return {
                 ...proj,
                 currentCash:
@@ -1743,15 +2101,14 @@ export const useStore = create<AppState>()(
           });
 
           return {
-            transactions: [...state.transactions, transaction],
+            transactions: state.transactions.filter(
+              (t) => t.id !== transactionId,
+            ),
             projects: updatedProjects,
           };
         }),
     }),
-    {
-      name: "finance-storage",
-      storage: createJSONStorage(() => AsyncStorage),
-    },
+    { name: "finance-storage", storage: createJSONStorage(() => AsyncStorage) },
   ),
 );
 

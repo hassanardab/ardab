@@ -9,6 +9,7 @@ interface AppState {
   employees: Employee[];
   addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
   addTransaction: (transaction: Transaction) => void;
+  removeTransaction: (transactionId: string) => void; // New method
   addEmployee: (employee: Employee) => void;
 }
 
@@ -38,14 +39,47 @@ export const useStore = create<AppState>()(
 
       addTransaction: (transaction) =>
         set((state) => {
-          // Update the specific project's balances based on the transaction
           const updatedProjects = state.projects.map((proj) => {
             if (proj.id === transaction.projectId) {
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? -transaction.amount
                 : transaction.amount;
+              return {
+                ...proj,
+                currentCash:
+                  transaction.method === "CASH"
+                    ? proj.currentCash + amountChange
+                    : proj.currentCash,
+                currentBank:
+                  transaction.method === "BANK"
+                    ? proj.currentBank + amountChange
+                    : proj.currentBank,
+              };
+            }
+            return proj;
+          });
+          return {
+            transactions: [...state.transactions, transaction],
+            projects: updatedProjects,
+          };
+        }),
 
+      // New: Remove a transaction and reverse balance impacts
+      removeTransaction: (transactionId) =>
+        set((state) => {
+          const transaction = state.transactions.find(
+            (t) => t.id === transactionId,
+          );
+          if (!transaction) return state;
+
+          const updatedProjects = state.projects.map((proj) => {
+            if (proj.id === transaction.projectId) {
+              const isDeduction = transaction.type !== "INCOME";
+              // Reverse the math
+              const amountChange = isDeduction
+                ? transaction.amount
+                : -transaction.amount;
               return {
                 ...proj,
                 currentCash:
@@ -62,14 +96,13 @@ export const useStore = create<AppState>()(
           });
 
           return {
-            transactions: [...state.transactions, transaction],
+            transactions: state.transactions.filter(
+              (t) => t.id !== transactionId,
+            ),
             projects: updatedProjects,
           };
         }),
     }),
-    {
-      name: "finance-storage",
-      storage: createJSONStorage(() => AsyncStorage),
-    },
+    { name: "finance-storage", storage: createJSONStorage(() => AsyncStorage) },
   ),
 );
