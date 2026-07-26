@@ -256,7 +256,7 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "1.3.0",
+    "version": "1.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ardab",
@@ -480,8 +480,8 @@ export const generateFinancialReport = async (
         <div class="summary-box">
           <h2>مراجعة الأرصدة</h2>
           <p>يرجى التحقق من هذه المبالغ فعلياً:</p>
-          <p class="balance cash">النقد الفعلي المتاح: $${project.currentCash.toFixed(2)}</p>
-          <p class="balance bank">رصيد الحساب البنكي: $${project.currentBank.toFixed(2)}</p>
+          <p class="balance cash">النقد الفعلي المتاح: ${project.currentCash.toFixed(2)}</p>
+          <p class="balance bank">رصيد الحساب البنكي: ${project.currentBank.toFixed(2)}</p>
           <p style="margin-top: 10px;"><strong>إجمالي المصروفات: $${totalExpenses.toFixed(2)}</strong></p>
         </div>
 
@@ -538,6 +538,7 @@ const styles = StyleSheet.create({
 });
 
 === ./src/app/index.tsx ===
+//src/app/index.tsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -553,7 +554,11 @@ import {
 } from "react-native";
 import { useStore } from "../store/useStore";
 import { PaymentMethod, TransactionType } from "../types";
-import { formatCurrency } from "../utils/format";
+import {
+  formatCurrency,
+  formatNumberInput,
+  parseFormattedNumber,
+} from "../utils/format";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -589,7 +594,7 @@ export default function DashboardScreen() {
   };
 
   const handleAddTransaction = () => {
-    const amountNum = Number(txAmount.replace(/,/g, ""));
+    const amountNum = parseFormattedNumber(txAmount);
     if (!selectedProjectId || !amountNum || isNaN(amountNum)) return;
 
     addTransaction({
@@ -620,13 +625,13 @@ export default function DashboardScreen() {
             <View style={styles.balanceBlock}>
               <Text style={styles.label}>الرصيد النقدي</Text>
               <Text style={styles.cashAmount}>
-                ${formatCurrency(project.currentCash)}
+                {formatCurrency(project.currentCash)}
               </Text>
             </View>
             <View style={styles.balanceBlock}>
               <Text style={styles.label}>الرصيد البنكي</Text>
               <Text style={styles.bankAmount}>
-                ${formatCurrency(project.currentBank)}
+                {formatCurrency(project.currentBank)}
               </Text>
             </View>
           </View>
@@ -722,7 +727,7 @@ export default function DashboardScreen() {
               placeholder="المبلغ"
               keyboardType="numeric"
               value={txAmount}
-              onChangeText={setTxAmount}
+              onChangeText={(text) => setTxAmount(formatNumberInput(text))}
               textAlign="right"
             />
             <TextInput
@@ -1189,9 +1194,15 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Hides the entire project directory from the tab bar */}
+      {/* Hide the specific nested project routes from the tab bar */}
       <Tabs.Screen
-        name="project"
+        name="project/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="project/[id]/report"
         options={{
           href: null,
         }}
@@ -1889,8 +1900,26 @@ const styles = StyleSheet.create({
 });
 
 === ./src/utils/format.ts ===
-export const formatCurrency = (amount: number) => {
-  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
+
+export const formatNumberInput = (value: string): string => {
+  // Keep digits only
+  const digits = value.replace(/[^\d]/g, "");
+
+  if (!digits) return "";
+
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(Number(digits));
+};
+
+export const parseFormattedNumber = (value: string): number => {
+  return Number(value.replace(/,/g, ""));
 };
 
 === ./src/hooks/use-color-scheme.web.ts ===

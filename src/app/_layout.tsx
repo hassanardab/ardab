@@ -17,6 +17,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "الرئيسية",
+          headerTitleAlign: "center",
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="dashboard" size={24} color={color} />
           ),

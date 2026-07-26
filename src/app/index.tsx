@@ -13,7 +13,11 @@ import {
 } from "react-native";
 import { useStore } from "../store/useStore";
 import { PaymentMethod, TransactionType } from "../types";
-import { formatCurrency } from "../utils/format";
+import {
+  formatCurrency,
+  formatNumberInput,
+  parseFormattedNumber,
+} from "../utils/format";
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -49,7 +53,7 @@ export default function DashboardScreen() {
   };
 
   const handleAddTransaction = () => {
-    const amountNum = Number(txAmount.replace(/,/g, ""));
+    const amountNum = parseFormattedNumber(txAmount);
     if (!selectedProjectId || !amountNum || isNaN(amountNum)) return;
 
     addTransaction({
@@ -58,7 +62,8 @@ export default function DashboardScreen() {
       type: txType,
       method: txMethod,
       amount: amountNum,
-      description: txDesc || "بدون وصف",
+      description:
+        txDesc || (txType === "TRANSFER" ? "تحويل داخلي" : "بدون وصف"),
       date: new Date().toISOString(),
     });
     setIsModalVisible(false);
@@ -80,18 +85,17 @@ export default function DashboardScreen() {
             <View style={styles.balanceBlock}>
               <Text style={styles.label}>الرصيد النقدي</Text>
               <Text style={styles.cashAmount}>
-                ${formatCurrency(project.currentCash)}
+                {formatCurrency(project.currentCash)}
               </Text>
             </View>
             <View style={styles.balanceBlock}>
               <Text style={styles.label}>الرصيد البنكي</Text>
               <Text style={styles.bankAmount}>
-                ${formatCurrency(project.currentBank)}
+                {formatCurrency(project.currentBank)}
               </Text>
             </View>
           </View>
 
-          {/* We intercept the button press so it doesn't trigger the card's navigation */}
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={(e) => {
@@ -130,31 +134,37 @@ export default function DashboardScreen() {
 
             <Text style={styles.modalLabel}>نوع المعاملة</Text>
             <View style={styles.row}>
-              {["EXPENSE", "INCOME", "PAYROLL", "BILL"].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.chip, txType === type && styles.chipActive]}
-                  onPress={() => setTxType(type as TransactionType)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      txType === type && styles.chipTextActive,
-                    ]}
+              {["EXPENSE", "INCOME", "PAYROLL", "BILL", "TRANSFER"].map(
+                (type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.chip, txType === type && styles.chipActive]}
+                    onPress={() => setTxType(type as TransactionType)}
                   >
-                    {type === "INCOME"
-                      ? "دخل"
-                      : type === "EXPENSE"
-                        ? "مصروف"
-                        : type === "PAYROLL"
-                          ? "رواتب"
-                          : "فاتورة"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        txType === type && styles.chipTextActive,
+                      ]}
+                    >
+                      {type === "INCOME"
+                        ? "دخل"
+                        : type === "EXPENSE"
+                          ? "مصروف"
+                          : type === "PAYROLL"
+                            ? "رواتب"
+                            : type === "BILL"
+                              ? "فاتورة"
+                              : "تحويل"}
+                    </Text>
+                  </TouchableOpacity>
+                ),
+              )}
             </View>
 
-            <Text style={styles.modalLabel}>طريقة الدفع</Text>
+            <Text style={styles.modalLabel}>
+              {txType === "TRANSFER" ? "تحويل إلى" : "طريقة الدفع"}
+            </Text>
             <View style={styles.row}>
               {["CASH", "BANK"].map((method) => (
                 <TouchableOpacity
@@ -171,7 +181,13 @@ export default function DashboardScreen() {
                       txMethod === method && styles.chipTextActive,
                     ]}
                   >
-                    {method === "CASH" ? "نقدي" : "بنكي"}
+                    {method === "CASH"
+                      ? txType === "TRANSFER"
+                        ? "الصندوق (سحب من البنك)"
+                        : "نقدي"
+                      : txType === "TRANSFER"
+                        ? "البنك (إيداع نقدي)"
+                        : "بنكي"}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -182,7 +198,7 @@ export default function DashboardScreen() {
               placeholder="المبلغ"
               keyboardType="numeric"
               value={txAmount}
-              onChangeText={setTxAmount}
+              onChangeText={(text) => setTxAmount(formatNumberInput(text))}
               textAlign="right"
             />
             <TextInput

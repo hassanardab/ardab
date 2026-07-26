@@ -1,5 +1,10 @@
 export type PaymentMethod = "CASH" | "BANK";
-export type TransactionType = "INCOME" | "EXPENSE" | "BILL" | "PAYROLL";
+export type TransactionType =
+  | "INCOME"
+  | "EXPENSE"
+  | "BILL"
+  | "PAYROLL"
+  | "TRANSFER";
 
 export interface Employee {
   id: string;

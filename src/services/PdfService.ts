@@ -111,8 +111,8 @@ export const generateFinancialReport = async (
         <div class="summary-box">
           <h2>مراجعة الأرصدة</h2>
           <p>يرجى التحقق من هذه المبالغ فعلياً:</p>
-          <p class="balance cash">النقد الفعلي المتاح: $${project.currentCash.toFixed(2)}</p>
-          <p class="balance bank">رصيد الحساب البنكي: $${project.currentBank.toFixed(2)}</p>
+          <p class="balance cash">النقد الفعلي المتاح: ${project.currentCash.toFixed(2)}</p>
+          <p class="balance bank">رصيد الحساب البنكي: ${project.currentBank.toFixed(2)}</p>
           <p style="margin-top: 10px;"><strong>إجمالي المصروفات: $${totalExpenses.toFixed(2)}</strong></p>
         </div>
 
