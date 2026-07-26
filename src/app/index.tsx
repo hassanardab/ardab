@@ -32,6 +32,7 @@ export default function DashboardScreen() {
   const [txMethod, setTxMethod] = useState<PaymentMethod>("CASH");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
+  const [txDate, setTxDate] = useState("");
 
   const handleCreateProject = () => {
     if (!newProjectName) return;
@@ -50,6 +51,7 @@ export default function DashboardScreen() {
     setIsModalVisible(true);
     setTxAmount("");
     setTxDesc("");
+    setTxDate(new Date().toISOString().split("T")[0]);
   };
 
   const handleAddTransaction = () => {
@@ -64,7 +66,7 @@ export default function DashboardScreen() {
       amount: amountNum,
       description:
         txDesc || (txType === "TRANSFER" ? "تحويل داخلي" : "بدون وصف"),
-      date: new Date().toISOString(),
+      date: txDate ? new Date(txDate).toISOString() : new Date().toISOString(),
     });
     setIsModalVisible(false);
   };
@@ -206,6 +208,13 @@ export default function DashboardScreen() {
               placeholder="الوصف (مواد، مورد، الخ)"
               value={txDesc}
               onChangeText={setTxDesc}
+              textAlign="right"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="التاريخ (YYYY-MM-DD)"
+              value={txDate}
+              onChangeText={setTxDate}
               textAlign="right"
             />
 

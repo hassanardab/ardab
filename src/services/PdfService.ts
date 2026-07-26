@@ -37,9 +37,9 @@ export const getFinancialReportHtml = (
         <h1>التقرير المالي: ${project.name}</h1>
         <div class="summary-box">
           <h2>مراجعة الأرصدة</h2>
-          <p class="balance cash">النقد الفعلي المتاح: $${formatCurrency(project.currentCash)}</p>
-          <p class="balance bank">رصيد الحساب البنكي: $${formatCurrency(project.currentBank)}</p>
-          <p style="margin-top: 10px;"><strong>إجمالي المصروفات: $${formatCurrency(totalExpenses)}</strong></p>
+          <p class="balance cash">النقد الحالي المتاح: ${formatCurrency(project.currentCash)}</p>
+          <p class="balance bank">الرصيد الحالي للحساب البنكي: ${formatCurrency(project.currentBank)}</p>
+          <p style="margin-top: 10px;"><strong>إجمالي المصروفات: ${formatCurrency(totalExpenses)}</strong></p>
         </div>
         <h2>سجل المعاملات</h2>
         <table>
