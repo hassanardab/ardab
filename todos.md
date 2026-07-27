@@ -23,10 +23,10 @@
 
 - version .4
   [x] add change the bank to cash
-  [_]
-  [_]
-  [_]
-  [_]
+  [x] fix the first box on pdf report
+  [x] fix the column size on the genrated pdf
+  [x] add color coding to the report
+  [x] fix the file name.
 
 ==========
 
@@ -48,14 +48,14 @@
 
 - version .3
   [_] can edit the transaction description
-  [_]
-  [_]
-  [_]
-  [_]
+  [_] better markting for the pdf report
+  [_] better UI for the report preview
+  [_] pdf reprot spacing on the other pages
+  [_] pdf report page numbering
 
 - version .4
-  [_]
-  [_]
+  [_] remove the project/[id]/report header
+  [_] the app should disply the phone top icons
   [_]
   [_]
   [_]

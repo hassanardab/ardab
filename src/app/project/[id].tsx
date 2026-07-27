@@ -1,5 +1,5 @@
-//src/app/project/[id].tsx
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -7,16 +7,23 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AddTransactionBottomSheet from "../../components/AddTransactionBottomSheet";
 import { useStore } from "../../store/useStore";
+import { Transaction } from "../../types";
 import { formatCurrency } from "../../utils/format";
 
 export default function ProjectDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { projects, transactions, removeTransaction } = useStore();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
 
   const project = projects.find((p) => p.id === id);
-  const projectTransactions = transactions.filter((t) => t.projectId === id);
+  const projectTransactions = transactions
+    .filter((t) => t.projectId === id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // الأحدث أولاً
 
   if (!project) {
     return (
@@ -31,7 +38,7 @@ export default function ProjectDetailScreen() {
       <Stack.Screen
         options={{
           headerTitleAlign: "center",
-          headerTitle: project ? project.name : "المشروع",
+          headerTitle: project.name,
         }}
       />
       <View style={styles.container}>
@@ -46,11 +53,18 @@ export default function ProjectDetailScreen() {
         </View>
 
         <FlatList
-          data={projectTransactions.reverse()}
+          data={projectTransactions}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 80 }} // لتفادي تغطية الزر العائم
           renderItem={({ item }) => (
-            <View style={styles.txCard}>
+            <TouchableOpacity
+              style={styles.txCard}
+              onLongPress={() => {
+                setSelectedTransaction(item);
+                setModalVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
               <View style={styles.txRow}>
                 <TouchableOpacity
                   onPress={() => removeTransaction(item.id)}
@@ -73,15 +87,37 @@ export default function ProjectDetailScreen() {
                     item.type === "INCOME" ? styles.income : styles.expense,
                   ]}
                 >
-                  {item.type === "INCOME" ? "+" : "-"}$
+                  {item.type === "INCOME" ? "+" : "-"}
                   {formatCurrency(item.amount)}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <Text style={styles.emptyText}>لا توجد معاملات بعد</Text>
           }
+        />
+
+        {/* 🔵 زر عائم (FAB) */}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => {
+            setSelectedTransaction(null);
+            setModalVisible(true);
+          }}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+
+        {/* المودال لإضافة أو تعديل معاملة */}
+        <AddTransactionBottomSheet
+          projectId={id!}
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            setSelectedTransaction(null);
+          }}
+          transactionToEdit={selectedTransaction}
         />
       </View>
     </>
@@ -130,4 +166,26 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { color: "#dc2626", fontWeight: "600", fontSize: 12 },
   emptyText: { textAlign: "center", color: "#6b7280", marginTop: 40 },
+  fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  fabText: {
+    color: "white",
+    fontSize: 28,
+    fontWeight: "300",
+    lineHeight: 30,
+  },
 });

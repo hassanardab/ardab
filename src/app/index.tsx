@@ -1,9 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,28 +8,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AddTransactionBottomSheet from "../components/AddTransactionBottomSheet";
 import { useStore } from "../store/useStore";
-import { PaymentMethod, TransactionType } from "../types";
-import {
-  formatCurrency,
-  formatNumberInput,
-  parseFormattedNumber,
-} from "../utils/format";
+import { formatCurrency } from "../utils/format";
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { projects, addProject, addTransaction } = useStore();
+  const { projects, addProject } = useStore();
   const [newProjectName, setNewProjectName] = useState("");
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
-  const [txType, setTxType] = useState<TransactionType>("EXPENSE");
-  const [txMethod, setTxMethod] = useState<PaymentMethod>("CASH");
-  const [txAmount, setTxAmount] = useState("");
-  const [txDesc, setTxDesc] = useState("");
-  const [txDate, setTxDate] = useState("");
 
   const handleCreateProject = () => {
     if (!newProjectName) return;
@@ -49,26 +37,6 @@ export default function DashboardScreen() {
   const openTransactionModal = (projectId: string) => {
     setSelectedProjectId(projectId);
     setIsModalVisible(true);
-    setTxAmount("");
-    setTxDesc("");
-    setTxDate(new Date().toISOString().split("T")[0]);
-  };
-
-  const handleAddTransaction = () => {
-    const amountNum = parseFormattedNumber(txAmount);
-    if (!selectedProjectId || !amountNum || isNaN(amountNum)) return;
-
-    addTransaction({
-      id: Date.now().toString(),
-      projectId: selectedProjectId,
-      type: txType,
-      method: txMethod,
-      amount: amountNum,
-      description:
-        txDesc || (txType === "TRANSFER" ? "تحويل داخلي" : "بدون وصف"),
-      date: txDate ? new Date(txDate).toISOString() : new Date().toISOString(),
-    });
-    setIsModalVisible(false);
   };
 
   return (
@@ -126,115 +94,14 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={isModalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>إضافة معاملة جديدة</Text>
-
-            <Text style={styles.modalLabel}>نوع المعاملة</Text>
-            <View style={styles.row}>
-              {["EXPENSE", "INCOME", "PAYROLL", "BILL", "TRANSFER"].map(
-                (type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[styles.chip, txType === type && styles.chipActive]}
-                    onPress={() => setTxType(type as TransactionType)}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        txType === type && styles.chipTextActive,
-                      ]}
-                    >
-                      {type === "INCOME"
-                        ? "دخل"
-                        : type === "EXPENSE"
-                          ? "مصروف"
-                          : type === "PAYROLL"
-                            ? "رواتب"
-                            : type === "BILL"
-                              ? "فاتورة"
-                              : "تحويل"}
-                    </Text>
-                  </TouchableOpacity>
-                ),
-              )}
-            </View>
-
-            <Text style={styles.modalLabel}>
-              {txType === "TRANSFER" ? "تحويل إلى" : "طريقة الدفع"}
-            </Text>
-            <View style={styles.row}>
-              {["CASH", "BANK"].map((method) => (
-                <TouchableOpacity
-                  key={method}
-                  style={[
-                    styles.chip,
-                    txMethod === method && styles.chipActive,
-                  ]}
-                  onPress={() => setTxMethod(method as PaymentMethod)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      txMethod === method && styles.chipTextActive,
-                    ]}
-                  >
-                    {method === "CASH"
-                      ? txType === "TRANSFER"
-                        ? "الصندوق (سحب من البنك)"
-                        : "نقدي"
-                      : txType === "TRANSFER"
-                        ? "البنك (إيداع نقدي)"
-                        : "بنكي"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="المبلغ"
-              keyboardType="numeric"
-              value={txAmount}
-              onChangeText={(text) => setTxAmount(formatNumberInput(text))}
-              textAlign="right"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="الوصف (مواد، مورد، الخ)"
-              value={txDesc}
-              onChangeText={setTxDesc}
-              textAlign="right"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="التاريخ (YYYY-MM-DD)"
-              value={txDate}
-              onChangeText={setTxDate}
-              textAlign="right"
-            />
-
-            <View style={[styles.row, { marginTop: 16 }]}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.saveBtn]}
-                onPress={handleAddTransaction}
-              >
-                <Text style={styles.saveBtnText}>حفظ</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.cancelBtn]}
-                onPress={() => setIsModalVisible(false)}
-              >
-                <Text style={styles.cancelBtnText}>إلغاء</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* المودال المستقل */}
+      {selectedProjectId && (
+        <AddTransactionBottomSheet
+          projectId={selectedProjectId}
+          visible={isModalVisible}
+          onClose={() => setIsModalVisible(false)}
+        />
+      )}
     </ScrollView>
   );
 }

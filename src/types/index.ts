@@ -1,3 +1,4 @@
+//src/types/index.ts
 export type PaymentMethod = "CASH" | "BANK";
 export type TransactionType =
   | "INCOME"

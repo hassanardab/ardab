@@ -23,6 +23,16 @@ export default function ReportPreviewScreen() {
 
   const htmlContent = getFinancialReportHtml(project, transactions);
 
+  // 1. Generate the date string matching your reports page format
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+  });
+
+  // 2. Construct the dynamic file name
+  const fileName = `التقرير المالي مشروع ${project.name}-${dateStr}.pdf`;
+
   return (
     <View style={styles.container}>
       <WebView
@@ -34,7 +44,8 @@ export default function ReportPreviewScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.exportBtn}
-          onPress={() => exportPdf(htmlContent)}
+          // 3. Pass the custom file name to the export service
+          onPress={() => exportPdf(htmlContent, fileName)}
         >
           <Text style={styles.exportBtnText}>تصدير PDF</Text>
         </TouchableOpacity>
