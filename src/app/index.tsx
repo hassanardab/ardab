@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,7 +42,13 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>المشاريع النشطة</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>المشاريع النشطة</Text>
+        <Image
+          source={require("@/assets/images/icon.png")}
+          style={styles.logo}
+        />
+      </View>
 
       {projects.map((project) => (
         <TouchableOpacity
@@ -108,12 +115,22 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f3f4f6", padding: 16 },
+  headerContainer: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   header: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 16,
     color: "#111827",
     textAlign: "right",
+  },
+  logo: {
+    width: 45,
+    height: 45,
+    borderRadius: 10,
   },
   card: {
     backgroundColor: "white",

@@ -2,24 +2,12 @@
 
 - version .1
   [x] create the app
-  [_]
-  [_]
-  [_]
-  [_]
 
 - version .2
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
+  [x]
 
 - version .3
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
+  [x]
 
 - version .4
   [x] add change the bank to cash
@@ -33,32 +21,32 @@
 # phase 2
 
 - version .1
-  [_] report have time period
-  [_] can choose time period for filtering
-  [_] based on the filtered will generate preview and pdf
-  [_] add amount format on pdf
-  [_] display the date period for the report
+  [x] report have time period
+  [x] can choose time period for filtering
+  [x] based on the filtered will generate preview and pdf
+  [x] add amount format on pdf
+  [x] app coloring and pdf coloring
 
 - version .2
-  [_] better spacing on the pdf report
-  [_] make the logo
-  [_] add the logo to the app
-  [_] the logo now on the pdf generated
-  [_] fix the last column on the pdf report
+  [x] better spacing on the pdf report
+  [x] make the logo
+  [x] display the date period for the report
+  [x] add the logo to the app
+  [x] fix the last column on the pdf report
 
 - version .3
-  [_] can edit the transaction description
+  [x] can edit the transaction description
   [_] better markting for the pdf report
-  [_] better UI for the report preview
-  [_] pdf reprot spacing on the other pages
-  [_] pdf report page numbering
+  [x] better UI for the report preview
+  [x] pdf reprot spacing on the other pages
+  [x] pdf report page numbering
 
 - version .4
   [_] remove the project/[id]/report header
   [_] the app should disply the phone top icons
-  [_] pdf report b-a sort
-  [_]
-  [_]
+  [x] pdf report b-a sort
+  [_] add the logo to the dashbaord page
+  [_] make the icon then the name next to it then add it to dashboard
 
 ==========
 

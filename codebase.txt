@@ -260,7 +260,7 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "1.4",
+    "version": "2.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ardab",
@@ -270,12 +270,6 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
       "bundleIdentifier": "com.hassanardab.ardab"
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.ArdabManager"
     },
@@ -288,9 +282,9 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash.png",
+          "imageWidth": 220
         }
       ],
       "expo-sharing",
@@ -330,31 +324,19 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
 
 - version .1
   [x] create the app
-  [_]
-  [_]
-  [_]
-  [_]
 
 - version .2
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
+  [x]
 
 - version .3
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
+  [x]
 
 - version .4
   [x] add change the bank to cash
   [x] fix the first box on pdf report
   [x] fix the column size on the genrated pdf
   [x] add color coding to the report
-  [_] fix the file name.
+  [x] fix the file name.
 
 ==========
 
@@ -362,31 +344,31 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
 
 - version .1
   [_] report have time period
-  [_] can choose time period for filtering
+  [x] can choose time period for filtering
   [_] based on the filtered will generate preview and pdf
-  [_] add amount format on pdf
+  [x] add amount format on pdf
   [_] display the date period for the report
 
 - version .2
   [_] better spacing on the pdf report
-  [_] make the logo
+  [x] make the logo
   [_] add the logo to the app
   [_] the logo now on the pdf generated
-  [_] fix the last column on the pdf report
+  [x] fix the last column on the pdf report
 
 - version .3
-  [_] can edit the transaction description
+  [x] can edit the transaction description
   [_] better markting for the pdf report
   [_] better UI for the report preview
   [_] pdf reprot spacing on the other pages
-  [_] pdf report page numbering
+  [x] pdf report page numbering
 
 - version .4
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
+  [_] remove the project/[id]/report header
+  [_] the app should disply the phone top icons
+  [x] pdf report b-a sort
+  [_] add the logo to the dashbaord page
+  [_] make the icon then the name next to it then add it to dashboard
 
 ==========
 
@@ -505,25 +487,39 @@ export interface Project {
 }
 
 === ./src/services/PdfService.ts ===
-// src/services/PdfService.ts
 import { formatCurrency } from "@/utils/format";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { Image } from "react-native";
 import { Project, Transaction } from "../types";
+
+// Grab the local app logo reference
+const LOGO_ASSET = require("@/assets/images/icon.png");
 
 export const getFinancialReportHtml = (
   project: Project,
   transactions: Transaction[],
+  periodLabel: string = "تاريخ المشروع بالكامل", // Fallback to all-time
 ) => {
-  const projectTransactions = transactions.filter(
-    (t) => t.projectId === project.id,
-  );
+  // Resolve local image to a URI expo-print can load
+  const logoUri = Image.resolveAssetSource(LOGO_ASSET).uri;
+
+  const projectTransactions = transactions
+    .filter((t) => t.projectId === project.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   const totalExpenses = projectTransactions
     .filter((t) => t.type !== "INCOME")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // دالة مساعدة لتحويل نوع المعاملة إلى اسم عربي (للاستمرارية)
+  // Generate today's date
+  const todayDate = new Date().toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "INCOME":
@@ -561,78 +557,158 @@ export const getFinancialReportHtml = (
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding: 0; 
-            color: #333; 
+            color: #334155; 
             direction: rtl; 
             text-align: right; 
           }
-          h1 { text-align: center; color: #1a365d; }
+          
+          /* Modern Header Layout */
+          .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1e293b;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+          }
+          .header-info { text-align: right; }
+          .header-info h1 {
+            margin: 0 0 10px 0;
+            color: #0f172a;
+            font-size: 26px;
+          }
+          .header-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #64748b;
+            flex-direction: row-reverse;
+          }
+          .header-meta span {
+            background-color: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+          }
+          .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: contain;
+            margin-left: 10px;
+          }
+
+          /* Professional Balance Summary Box */
           .summary-box { 
-            background-color: #f7fafc; 
-            padding: 10px; 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 30px; 
             border: 1px solid #e2e8f0; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             page-break-inside: avoid; 
           }
-          .balance-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
-          .balance-row p { margin: 0; font-size: 18px; font-weight: bold; }
-          .cash { color: #047857; }
-          .bank { color: #1d4ed8; }
+          .summary-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 12px;
+          }
+          .balance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+          }
+          .balance-card {
+            background-color: #ffffff;
+            padding: 18px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+          }
+          .balance-label {
+            display: block;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .balance-value { font-size: 24px; font-weight: bold; }
+          .cash { color: #059669; }
+          .bank { color: #2563eb; }
+          .expense-total {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px dashed #cbd5e1;
+            font-size: 16px;
+            color: #334155;
+          }
           
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 15px; 
-            table-layout: fixed; 
-          }
-          th, td { 
-            border: 1px solid #cbd5e1; 
-            padding: 12px; 
-            text-align: right; 
-            word-wrap: break-word; 
-            overflow: hidden; 
-          }
-          th { background-color: #f1f5f9; font-weight: bold; }
+          /* Table Styles */
+          h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
+          th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
+          
+          th:nth-child(1), td:nth-child(1) { width: 18%; }
+          th:nth-child(2), td:nth-child(2) { width: 14%; }
+          th:nth-child(3), td:nth-child(3) { width: 14%; }
+          th:nth-child(4), td:nth-child(4) { width: 32%; }
+          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; }
 
-          /* Fixed Column Widths */
-          th:nth-child(1), td:nth-child(1) { width: 18%; } /* التاريخ */
-          th:nth-child(2), td:nth-child(2) { width: 14%; } /* النوع */
-          th:nth-child(3), td:nth-child(3) { width: 14%; } /* الطريقة */
-          th:nth-child(4), td:nth-child(4) { width: 32%; } /* الوصف */
-          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; } /* المبلغ */
+          .type-expense  { background-color: transparent; }
+          .type-income   { background-color: #f0fff0; }
+          .type-bill     { background-color: #f0f0f0; }
+          .type-payroll  { background-color: #fdf5e6; }
+          .type-transfer { background-color: #f0f8ff; }
 
-         /* ألوان خلفية خفيفة جداً حسب نوع المعاملة */
-          .type-expense  { background-color: transparent; }  /* بلا لون */
-          .type-income   { background-color: #f0fff0; }  /* أخضر فاتح جداً */
-          .type-bill     { background-color: #f0f0f0; }  /* رمادي فاتح جداً */
-          .type-payroll  { background-color: #fdf5e6; }  /* بنّي فاتح */
-          .type-transfer { background-color: #f0f8ff; } /* ازرق فاتح */
-
-          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; }
-          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; }
+          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
+          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
         </style>
       </head>
       <body>
-        <h1>التقرير المالي: ${project.name}</h1>
         
+        <!-- Upgraded Header section -->
+        <div class="header-container">
+          <img src="${logoUri}" class="logo" alt="App Logo" />
+          <div class="header-info">
+            <h1>التقرير المالي: ${project.name}</h1>
+            <div class="header-meta">
+              <span><strong>الفترة:</strong> ${periodLabel}</span>
+              <span><strong>تاريخ الإصدار:</strong> ${todayDate}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Upgraded Summary Grid -->
         <div class="summary-box">
-          <h2>مراجعة الأرصدة</h2>
-          <p>يرجى التحقق من هذه المبالغ فعلياً:</p>
+          <h2 class="summary-title">مراجعة الأرصدة الحالية</h2>
           
-          <div class="balance-row">
-            <p class="cash">النقد الفعلي المتاح: ${formatCurrency(project.currentCash)}</p>
-            <p class="bank">رصيد الحساب البنكي: ${formatCurrency(project.currentBank)}</p>
+          <div class="balance-grid">
+            <div class="balance-card">
+              <span class="balance-label">النقد الفعلي المتاح</span>
+              <span class="balance-value cash">${formatCurrency(project.currentCash)}</span>
+            </div>
+            <div class="balance-card">
+              <span class="balance-label">رصيد الحساب البنكي</span>
+              <span class="balance-value bank">${formatCurrency(project.currentBank)}</span>
+            </div>
           </div>
           
-          <p style="margin-top: 10px;"><strong>إجمالي المصروفات: ${formatCurrency(totalExpenses)}</strong></p>
+          <div class="expense-total">
+            إجمالي المصروفات <strong>للفترة المحددة</strong>: <strong style="color: #ef4444">${formatCurrency(totalExpenses)}</strong>
+          </div>
         </div>
 
-        <h2>سجل المعاملات</h2>
+        <h2>سجل المعاملات (${projectTransactions.length})</h2>
         <table>
           <tr>
             <th>التاريخ</th>
             <th>النوع</th>
-            <th>الطريقة</th>
+            <th>الدفع</th>
             <th>الوصف</th>
             <th>المبلغ</th>
           </tr>
@@ -739,6 +815,7 @@ const styles = StyleSheet.create({
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -779,7 +856,13 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>المشاريع النشطة</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>المشاريع النشطة</Text>
+        <Image
+          source={require("@/assets/images/icon.png")}
+          style={styles.logo}
+        />
+      </View>
 
       {projects.map((project) => (
         <TouchableOpacity
@@ -846,12 +929,22 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f3f4f6", padding: 16 },
+  headerContainer: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   header: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 16,
     color: "#111827",
     textAlign: "right",
+  },
+  logo: {
+    width: 45,
+    height: 45,
+    borderRadius: 10,
   },
   card: {
     backgroundColor: "white",
@@ -972,9 +1065,10 @@ const styles = StyleSheet.create({
 
 === ./src/app/project/[id].tsx ===
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -982,6 +1076,7 @@ import {
 } from "react-native";
 import AddTransactionBottomSheet from "../../components/AddTransactionBottomSheet";
 import { useStore } from "../../store/useStore";
+import { Transaction } from "../../types";
 import { formatCurrency } from "../../utils/format";
 
 export default function ProjectDetailScreen() {
@@ -989,11 +1084,72 @@ export default function ProjectDetailScreen() {
   const router = useRouter();
   const { projects, transactions, removeTransaction } = useStore();
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
+
+  // Filter and Pagination States
+  const [timeFilter, setTimeFilter] = useState<string>("ALL");
+  const [visibleCount, setVisibleCount] = useState<number>(20);
 
   const project = projects.find((p) => p.id === id);
-  const projectTransactions = transactions
-    .filter((t) => t.projectId === id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // الأحدث أولاً
+
+  // Memoized filtering and sorting
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const startOfThisMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
+    const startOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      1,
+    ).getTime();
+    const endOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59,
+      999,
+    ).getTime();
+    const startOfThisYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+    let filtered = transactions.filter((t) => t.projectId === id);
+
+    filtered = filtered.filter((t) => {
+      const txTime = new Date(t.date).getTime();
+      switch (timeFilter) {
+        case "THIS_MONTH":
+          return txTime >= startOfThisMonth;
+        case "LAST_MONTH":
+          return txTime >= startOfLastMonth && txTime <= endOfLastMonth;
+        case "THIS_YEAR":
+          return txTime >= startOfThisYear;
+        case "ALL":
+        default:
+          return true;
+      }
+    });
+
+    // الأحدث أولاً
+    return filtered.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [transactions, id, timeFilter]);
+
+  // Apply Pagination limit
+  const paginatedTransactions = useMemo(() => {
+    return filteredTransactions.slice(0, visibleCount);
+  }, [filteredTransactions, visibleCount]);
+
+  const handleLoadMore = () => {
+    if (visibleCount < filteredTransactions.length) {
+      setVisibleCount((prev) => prev + 20);
+    }
+  };
 
   if (!project) {
     return (
@@ -1015,19 +1171,71 @@ export default function ProjectDetailScreen() {
         <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.reportBtn}
-            onPress={() => router.push(`/project/${project.id}/report`)}
+            // Update routing to pass the current timeFilter as a parameter
+            onPress={() =>
+              router.push({
+                pathname: "/project/[id]/report",
+                params: { id: project.id, timeFilter },
+              })
+            }
           >
             <Text style={styles.reportBtnText}>معاينة التقرير</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>العمليات</Text>
         </View>
 
+        {/* شريط الفلاتر الزمنية */}
+        <View style={styles.filterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {[
+              { id: "ALL", label: "الكل" },
+              { id: "THIS_MONTH", label: "هذا الشهر" },
+              { id: "LAST_MONTH", label: "الشهر الماضي" },
+              { id: "THIS_YEAR", label: "هذا العام" },
+            ].map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={[
+                  styles.filterChip,
+                  timeFilter === f.id && styles.filterChipActive,
+                ]}
+                onPress={() => {
+                  setTimeFilter(f.id);
+                  setVisibleCount(20); // إعادة تعيين التمرير عند تغيير الفلتر
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    timeFilter === f.id && styles.filterChipTextActive,
+                  ]}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         <FlatList
-          data={projectTransactions}
+          data={paginatedTransactions}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 80 }} // لتفادي تغطية الزر العائم
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
           renderItem={({ item }) => (
-            <View style={styles.txCard}>
+            <TouchableOpacity
+              style={styles.txCard}
+              onLongPress={() => {
+                setSelectedTransaction(item);
+                setModalVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
               <View style={styles.txRow}>
                 <TouchableOpacity
                   onPress={() => removeTransaction(item.id)}
@@ -1054,7 +1262,7 @@ export default function ProjectDetailScreen() {
                   {formatCurrency(item.amount)}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <Text style={styles.emptyText}>لا توجد معاملات بعد</Text>
@@ -1064,16 +1272,23 @@ export default function ProjectDetailScreen() {
         {/* 🔵 زر عائم (FAB) */}
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => setModalVisible(true)}
+          onPress={() => {
+            setSelectedTransaction(null);
+            setModalVisible(true);
+          }}
         >
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>
 
-        {/* المودال لإضافة معاملة */}
+        {/* المودال لإضافة أو تعديل معاملة */}
         <AddTransactionBottomSheet
           projectId={id!}
           visible={modalVisible}
-          onClose={() => setModalVisible(false)}
+          onClose={() => {
+            setModalVisible(false);
+            setSelectedTransaction(null);
+          }}
+          transactionToEdit={selectedTransaction}
         />
       </View>
     </>
@@ -1087,7 +1302,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 16, // قللنا المسافة قليلاً لاستيعاب الفلاتر
   },
   headerTitle: { fontSize: 24, fontWeight: "bold", color: "#111827" },
   reportBtn: {
@@ -1097,6 +1312,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   reportBtnText: { color: "white", fontWeight: "600" },
+  filterContainer: {
+    marginBottom: 16,
+  },
+  filterScroll: {
+    gap: 8,
+    flexDirection: "row-reverse", // لمحاذاة العناصر من اليمين لليسار
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#e5e7eb",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  filterChipActive: {
+    backgroundColor: "#dbeafe",
+    borderColor: "#3b82f6",
+  },
+  filterChipText: {
+    color: "#4b5563",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  filterChipTextActive: {
+    color: "#1d4ed8",
+    fontWeight: "bold",
+  },
   txCard: {
     backgroundColor: "white",
     padding: 16,
@@ -1157,7 +1400,11 @@ import {
 import { useStore } from "../../../store/useStore";
 
 export default function ReportPreviewScreen() {
-  const { id } = useLocalSearchParams();
+  // Capture timeFilter from params
+  const { id, timeFilter } = useLocalSearchParams<{
+    id: string;
+    timeFilter?: string;
+  }>();
   const { projects, transactions } = useStore();
 
   const project = projects.find((p) => p.id === id);
@@ -1170,16 +1417,62 @@ export default function ReportPreviewScreen() {
     );
   }
 
-  const htmlContent = getFinancialReportHtml(project, transactions);
+  // 1. Filter logic based on the user's selected time period
+  const filteredTransactions = transactions
+    .filter((t) => t.projectId === id)
+    .filter((t) => {
+      if (!timeFilter || timeFilter === "ALL") return true;
 
-  // 1. Generate the date string matching your reports page format
+      const txTime = new Date(t.date).getTime();
+      const now = new Date();
+
+      if (timeFilter === "THIS_MONTH") {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        return txTime >= start;
+      }
+      if (timeFilter === "LAST_MONTH") {
+        const start = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1,
+        ).getTime();
+        const end = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999,
+        ).getTime();
+        return txTime >= start && txTime <= end;
+      }
+      if (timeFilter === "THIS_YEAR") {
+        const start = new Date(now.getFullYear(), 0, 1).getTime();
+        return txTime >= start;
+      }
+      return true;
+    });
+
+  // 2. Generate the dynamic Arabic label for the selected period
+  let periodLabel = "تاريخ المشروع بالكامل";
+  if (timeFilter === "THIS_MONTH") periodLabel = "هذا الشهر";
+  if (timeFilter === "LAST_MONTH") periodLabel = "الشهر الماضي";
+  if (timeFilter === "THIS_YEAR") periodLabel = "هذا العام";
+
+  // 3. Pass the filtered transactions and the period label
+  const htmlContent = getFinancialReportHtml(
+    project,
+    filteredTransactions,
+    periodLabel,
+  );
+
   const dateStr = new Date().toLocaleDateString("en-US", {
     month: "long",
     day: "2-digit",
     year: "numeric",
   });
 
-  // 2. Construct the dynamic file name
   const fileName = `التقرير المالي مشروع ${project.name}-${dateStr}.pdf`;
 
   return (
@@ -1193,7 +1486,6 @@ export default function ReportPreviewScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.exportBtn}
-          // 3. Pass the custom file name to the export service
           onPress={() => exportPdf(htmlContent, fileName)}
         >
           <Text style={styles.exportBtnText}>تصدير PDF</Text>
@@ -1203,6 +1495,7 @@ export default function ReportPreviewScreen() {
   );
 }
 
+// (Keep styles the exact same)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f3f4f6" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -1378,7 +1671,7 @@ export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }
 
 === ./src/components/AddTransactionBottomSheet.tsx ===
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -1390,36 +1683,55 @@ import {
   View,
 } from "react-native";
 import { useStore } from "../store/useStore";
-import { PaymentMethod, TransactionType } from "../types";
+import { PaymentMethod, Transaction, TransactionType } from "../types";
 import { formatNumberInput, parseFormattedNumber } from "../utils/format";
 
 interface Props {
   projectId: string;
   visible: boolean;
   onClose: () => void;
+  transactionToEdit?: Transaction | null;
 }
 
 export default function AddTransactionBottomSheet({
   projectId,
   visible,
   onClose,
+  transactionToEdit,
 }: Props) {
-  const { addTransaction } = useStore();
+  const { addTransaction, updateTransaction } = useStore();
   const [txType, setTxType] = useState<TransactionType>("EXPENSE");
   const [txMethod, setTxMethod] = useState<PaymentMethod>("CASH");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
 
-  // Date Picker States
   const [txDate, setTxDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      if (transactionToEdit) {
+        setTxType(transactionToEdit.type);
+        setTxMethod(transactionToEdit.method);
+        setTxAmount(formatNumberInput(transactionToEdit.amount.toString()));
+        setTxDesc(transactionToEdit.description);
+        setTxDate(new Date(transactionToEdit.date));
+      } else {
+        setTxAmount("");
+        setTxDesc("");
+        setTxDate(new Date());
+        setTxType("EXPENSE");
+        setTxMethod("CASH");
+      }
+    }
+  }, [visible, transactionToEdit]);
 
   const handleSave = () => {
     const amountNum = parseFormattedNumber(txAmount);
     if (!amountNum || isNaN(amountNum)) return;
 
-    addTransaction({
-      id: Date.now().toString(),
+    const transactionData = {
+      id: transactionToEdit ? transactionToEdit.id : Date.now().toString(),
       projectId,
       type: txType,
       method: txMethod,
@@ -1427,9 +1739,14 @@ export default function AddTransactionBottomSheet({
       description:
         txDesc || (txType === "TRANSFER" ? "تحويل داخلي" : "بدون وصف"),
       date: txDate.toISOString(),
-    });
+    };
 
-    // Reset Fields
+    if (transactionToEdit) {
+      updateTransaction(transactionData);
+    } else {
+      addTransaction(transactionData);
+    }
+
     setTxAmount("");
     setTxDesc("");
     setTxDate(new Date());
@@ -1455,7 +1772,9 @@ export default function AddTransactionBottomSheet({
         style={styles.modalOverlay}
       >
         <View style={styles.modalContent}>
-          <Text style={styles.modalHeader}>إضافة معاملة جديدة</Text>
+          <Text style={styles.modalHeader}>
+            {transactionToEdit ? "تعديل المعاملة" : "إضافة معاملة جديدة"}
+          </Text>
 
           <Text style={styles.modalLabel}>نوع المعاملة</Text>
           <View style={styles.row}>
@@ -1546,7 +1865,7 @@ export default function AddTransactionBottomSheet({
                 value={txDate}
                 mode="date"
                 display="default"
-                onChange={handleDateChange}
+                onValueChange={handleDateChange}
               />
               {Platform.OS === "ios" && (
                 <TouchableOpacity
@@ -2482,6 +2801,7 @@ interface AppState {
   addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
   addTransaction: (transaction: Transaction) => void;
   removeTransaction: (transactionId: string) => void;
+  updateTransaction: (transaction: Transaction) => void;
   addEmployee: (employee: Employee) => void;
 }
 
@@ -2513,7 +2833,6 @@ export const useStore = create<AppState>()(
         set((state) => {
           const updatedProjects = state.projects.map((proj) => {
             if (proj.id === transaction.projectId) {
-              // Handle Transfers between Bank and Cash
               if (transaction.type === "TRANSFER") {
                 const isToBank = transaction.method === "BANK";
                 return {
@@ -2527,7 +2846,6 @@ export const useStore = create<AppState>()(
                 };
               }
 
-              // Handle standard Income/Expenses
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? -transaction.amount
@@ -2552,6 +2870,93 @@ export const useStore = create<AppState>()(
           };
         }),
 
+      updateTransaction: (updatedTransaction) =>
+        set((state) => {
+          const oldTransaction = state.transactions.find(
+            (t) => t.id === updatedTransaction.id,
+          );
+          if (!oldTransaction) return state;
+
+          // 1. عكس تأثير المعاملة القديمة على الأرصدة
+          const tempProjects = state.projects.map((proj) => {
+            if (proj.id === oldTransaction.projectId) {
+              if (oldTransaction.type === "TRANSFER") {
+                const isToBank = oldTransaction.method === "BANK";
+                return {
+                  ...proj,
+                  currentBank:
+                    proj.currentBank -
+                    (isToBank ? oldTransaction.amount : -oldTransaction.amount),
+                  currentCash:
+                    proj.currentCash -
+                    (isToBank ? -oldTransaction.amount : oldTransaction.amount),
+                };
+              }
+              const isDeduction = oldTransaction.type !== "INCOME";
+              const amountChange = isDeduction
+                ? oldTransaction.amount
+                : -oldTransaction.amount;
+              return {
+                ...proj,
+                currentCash:
+                  oldTransaction.method === "CASH"
+                    ? proj.currentCash + amountChange
+                    : proj.currentCash,
+                currentBank:
+                  oldTransaction.method === "BANK"
+                    ? proj.currentBank + amountChange
+                    : proj.currentBank,
+              };
+            }
+            return proj;
+          });
+
+          // 2. تطبيق تأثير المعاملة الجديدة على الأرصدة
+          const finalProjects = tempProjects.map((proj) => {
+            if (proj.id === updatedTransaction.projectId) {
+              if (updatedTransaction.type === "TRANSFER") {
+                const isToBank = updatedTransaction.method === "BANK";
+                return {
+                  ...proj,
+                  currentBank:
+                    proj.currentBank +
+                    (isToBank
+                      ? updatedTransaction.amount
+                      : -updatedTransaction.amount),
+                  currentCash:
+                    proj.currentCash +
+                    (isToBank
+                      ? -updatedTransaction.amount
+                      : updatedTransaction.amount),
+                };
+              }
+              const isDeduction = updatedTransaction.type !== "INCOME";
+              const amountChange = isDeduction
+                ? -updatedTransaction.amount
+                : updatedTransaction.amount;
+              return {
+                ...proj,
+                currentCash:
+                  updatedTransaction.method === "CASH"
+                    ? proj.currentCash + amountChange
+                    : proj.currentCash,
+                currentBank:
+                  updatedTransaction.method === "BANK"
+                    ? proj.currentBank + amountChange
+                    : proj.currentBank,
+              };
+            }
+            return proj;
+          });
+
+          return {
+            transactions: state.transactions.map((t) =>
+              t.id === updatedTransaction.id ? updatedTransaction : t,
+            ),
+            projects: finalProjects,
+          };
+        }),
+
       removeTransaction: (transactionId) =>
         set((state) => {
           const transaction = state.transactions.find(
@@ -2561,7 +2966,6 @@ export const useStore = create<AppState>()(
 
           const updatedProjects = state.projects.map((proj) => {
             if (proj.id === transaction.projectId) {
-              // Reverse Transfer logic
               if (transaction.type === "TRANSFER") {
                 const isToBank = transaction.method === "BANK";
                 return {
@@ -2575,7 +2979,6 @@ export const useStore = create<AppState>()(
                 };
               }
 
-              // Reverse standard Income/Expense logic
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? transaction.amount

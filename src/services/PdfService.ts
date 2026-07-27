@@ -1,22 +1,36 @@
-// src/services/PdfService.ts
 import { formatCurrency } from "@/utils/format";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { Image } from "react-native";
 import { Project, Transaction } from "../types";
+
+// Grab the local app logo reference
+const LOGO_ASSET = require("@/assets/images/icon.png");
 
 export const getFinancialReportHtml = (
   project: Project,
   transactions: Transaction[],
+  periodLabel: string = "تاريخ المشروع بالكامل", // Fallback to all-time
 ) => {
+  // Resolve local image to a URI expo-print can load
+  const logoUri = Image.resolveAssetSource(LOGO_ASSET).uri;
+
   const projectTransactions = transactions
     .filter((t) => t.projectId === project.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   const totalExpenses = projectTransactions
     .filter((t) => t.type !== "INCOME")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // دالة مساعدة لتحويل نوع المعاملة إلى اسم عربي (للاستمرارية)
+  // Generate today's date
+  const todayDate = new Date().toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "INCOME":
@@ -54,73 +68,153 @@ export const getFinancialReportHtml = (
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding: 0; 
-            color: #333; 
+            color: #334155; 
             direction: rtl; 
             text-align: right; 
           }
-          h1 { text-align: center; color: #1a365d; }
+          
+          /* Modern Header Layout */
+          .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1e293b;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+          }
+          .header-info { text-align: right; }
+          .header-info h1 {
+            margin: 0 0 10px 0;
+            color: #0f172a;
+            font-size: 26px;
+          }
+          .header-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #64748b;
+            flex-direction: row-reverse;
+          }
+          .header-meta span {
+            background-color: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+          }
+          .logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 12px;
+            object-fit: contain;
+            margin-left: 10px;
+          }
+
+          /* Professional Balance Summary Box */
           .summary-box { 
-            background-color: #f7fafc; 
-            padding: 10px; 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 30px; 
             border: 1px solid #e2e8f0; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             page-break-inside: avoid; 
           }
-          .balance-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
-          .balance-row p { margin: 0; font-size: 18px; font-weight: bold; }
-          .cash { color: #047857; }
-          .bank { color: #1d4ed8; }
+          .summary-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 12px;
+          }
+          .balance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+          }
+          .balance-card {
+            background-color: #ffffff;
+            padding: 18px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+          }
+          .balance-label {
+            display: block;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .balance-value { font-size: 24px; font-weight: bold; }
+          .cash { color: #059669; }
+          .bank { color: #2563eb; }
+          .expense-total {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px dashed #cbd5e1;
+            font-size: 16px;
+            color: #334155;
+          }
           
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 15px; 
-            table-layout: fixed; 
-          }
-          th, td { 
-            border: 1px solid #cbd5e1; 
-            padding: 12px; 
-            text-align: right; 
-            word-wrap: break-word; 
-            overflow: hidden; 
-          }
-          th { background-color: #f1f5f9; font-weight: bold; }
+          /* Table Styles */
+          h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
+          th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
+          
+          th:nth-child(1), td:nth-child(1) { width: 18%; }
+          th:nth-child(2), td:nth-child(2) { width: 14%; }
+          th:nth-child(3), td:nth-child(3) { width: 14%; }
+          th:nth-child(4), td:nth-child(4) { width: 32%; }
+          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; }
 
-          /* Fixed Column Widths */
-          th:nth-child(1), td:nth-child(1) { width: 18%; } /* التاريخ */
-          th:nth-child(2), td:nth-child(2) { width: 14%; } /* النوع */
-          th:nth-child(3), td:nth-child(3) { width: 14%; } /* الطريقة */
-          th:nth-child(4), td:nth-child(4) { width: 32%; } /* الوصف */
-          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; } /* المبلغ */
+          .type-expense  { background-color: transparent; }
+          .type-income   { background-color: #f0fff0; }
+          .type-bill     { background-color: #f0f0f0; }
+          .type-payroll  { background-color: #fdf5e6; }
+          .type-transfer { background-color: #f0f8ff; }
 
-         /* ألوان خلفية خفيفة جداً حسب نوع المعاملة */
-          .type-expense  { background-color: transparent; }  /* بلا لون */
-          .type-income   { background-color: #f0fff0; }  /* أخضر فاتح جداً */
-          .type-bill     { background-color: #f0f0f0; }  /* رمادي فاتح جداً */
-          .type-payroll  { background-color: #fdf5e6; }  /* بنّي فاتح */
-          .type-transfer { background-color: #f0f8ff; } /* ازرق فاتح */
-
-          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; }
-          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; }
+          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
+          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
         </style>
       </head>
       <body>
-        <h1>التقرير المالي: ${project.name}</h1>
         
+        <!-- Upgraded Header section -->
+        <div class="header-container">
+          <img src="${logoUri}" class="logo" alt="App Logo" />
+          <div class="header-info">
+            <h1>التقرير المالي: ${project.name}</h1>
+            <div class="header-meta">
+              <span><strong>الفترة:</strong> ${periodLabel}</span>
+              <span><strong>تاريخ الإصدار:</strong> ${todayDate}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Upgraded Summary Grid -->
         <div class="summary-box">
-          <h2>مراجعة الأرصدة</h2>
-          <p>يرجى التحقق من هذه المبالغ فعلياً:</p>
+          <h2 class="summary-title">مراجعة الأرصدة الحالية</h2>
           
-          <div class="balance-row">
-            <p class="cash">النقد الفعلي المتاح: ${formatCurrency(project.currentCash)}</p>
-            <p class="bank">رصيد الحساب البنكي: ${formatCurrency(project.currentBank)}</p>
+          <div class="balance-grid">
+            <div class="balance-card">
+              <span class="balance-label">النقد الفعلي المتاح</span>
+              <span class="balance-value cash">${formatCurrency(project.currentCash)}</span>
+            </div>
+            <div class="balance-card">
+              <span class="balance-label">رصيد الحساب البنكي</span>
+              <span class="balance-value bank">${formatCurrency(project.currentBank)}</span>
+            </div>
           </div>
           
-          <p style="margin-top: 10px;"><strong>إجمالي المصروفات: ${formatCurrency(totalExpenses)}</strong></p>
+          <div class="expense-total">
+            إجمالي المصروفات <strong>للفترة المحددة</strong>: <strong style="color: #ef4444">${formatCurrency(totalExpenses)}</strong>
+          </div>
         </div>
 
-        <h2>سجل المعاملات</h2>
+        <h2>سجل المعاملات (${projectTransactions.length})</h2>
         <table>
           <tr>
             <th>التاريخ</th>

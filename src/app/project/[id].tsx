@@ -1,7 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,10 +21,69 @@ export default function ProjectDetailScreen() {
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
 
+  // Filter and Pagination States
+  const [timeFilter, setTimeFilter] = useState<string>("ALL");
+  const [visibleCount, setVisibleCount] = useState<number>(20);
+
   const project = projects.find((p) => p.id === id);
-  const projectTransactions = transactions
-    .filter((t) => t.projectId === id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // الأحدث أولاً
+
+  // Memoized filtering and sorting
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const startOfThisMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
+    const startOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      1,
+    ).getTime();
+    const endOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59,
+      999,
+    ).getTime();
+    const startOfThisYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+    let filtered = transactions.filter((t) => t.projectId === id);
+
+    filtered = filtered.filter((t) => {
+      const txTime = new Date(t.date).getTime();
+      switch (timeFilter) {
+        case "THIS_MONTH":
+          return txTime >= startOfThisMonth;
+        case "LAST_MONTH":
+          return txTime >= startOfLastMonth && txTime <= endOfLastMonth;
+        case "THIS_YEAR":
+          return txTime >= startOfThisYear;
+        case "ALL":
+        default:
+          return true;
+      }
+    });
+
+    // الأحدث أولاً
+    return filtered.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [transactions, id, timeFilter]);
+
+  // Apply Pagination limit
+  const paginatedTransactions = useMemo(() => {
+    return filteredTransactions.slice(0, visibleCount);
+  }, [filteredTransactions, visibleCount]);
+
+  const handleLoadMore = () => {
+    if (visibleCount < filteredTransactions.length) {
+      setVisibleCount((prev) => prev + 20);
+    }
+  };
 
   if (!project) {
     return (
@@ -45,17 +105,62 @@ export default function ProjectDetailScreen() {
         <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.reportBtn}
-            onPress={() => router.push(`/project/${project.id}/report`)}
+            // Update routing to pass the current timeFilter as a parameter
+            onPress={() =>
+              router.push({
+                pathname: "/project/[id]/report",
+                params: { id: project.id, timeFilter },
+              })
+            }
           >
             <Text style={styles.reportBtnText}>معاينة التقرير</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>العمليات</Text>
         </View>
 
+        {/* شريط الفلاتر الزمنية */}
+        <View style={styles.filterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            {[
+              { id: "ALL", label: "الكل" },
+              { id: "THIS_MONTH", label: "هذا الشهر" },
+              { id: "LAST_MONTH", label: "الشهر الماضي" },
+              { id: "THIS_YEAR", label: "هذا العام" },
+            ].map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={[
+                  styles.filterChip,
+                  timeFilter === f.id && styles.filterChipActive,
+                ]}
+                onPress={() => {
+                  setTimeFilter(f.id);
+                  setVisibleCount(20); // إعادة تعيين التمرير عند تغيير الفلتر
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    timeFilter === f.id && styles.filterChipTextActive,
+                  ]}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         <FlatList
-          data={projectTransactions}
+          data={paginatedTransactions}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 80 }} // لتفادي تغطية الزر العائم
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.txCard}
@@ -131,16 +236,44 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 16, // قللنا المسافة قليلاً لاستيعاب الفلاتر
   },
   headerTitle: { fontSize: 24, fontWeight: "bold", color: "#111827" },
   reportBtn: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#000000",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   reportBtnText: { color: "white", fontWeight: "600" },
+  filterContainer: {
+    marginBottom: 16,
+  },
+  filterScroll: {
+    gap: 8,
+    flexDirection: "row-reverse", // لمحاذاة العناصر من اليمين لليسار
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#e5e7eb",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  filterChipActive: {
+    backgroundColor: "#dbeafe",
+    borderColor: "#000000",
+  },
+  filterChipText: {
+    color: "#4b5563",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  filterChipTextActive: {
+    color: "#000000",
+    fontWeight: "bold",
+  },
   txCard: {
     backgroundColor: "white",
     padding: 16,
@@ -173,7 +306,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#2563eb",
+    backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,

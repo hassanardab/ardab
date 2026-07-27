@@ -257,6 +257,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  datePickerContainer: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -291,10 +295,7 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontSize: 14,
   },
-  datePickerContainer: {
-    alignItems: "center",
-    marginBottom: 12,
-  },
+
   doneButton: {
     marginTop: 8,
     padding: 8,
