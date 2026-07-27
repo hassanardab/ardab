@@ -9,9 +9,9 @@ export const getFinancialReportHtml = (
   project: Project,
   transactions: Transaction[],
 ) => {
-  const projectTransactions = transactions.filter(
-    (t) => t.projectId === project.id,
-  );
+  const projectTransactions = transactions
+    .filter((t) => t.projectId === project.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const totalExpenses = projectTransactions
     .filter((t) => t.type !== "INCOME")
     .reduce((sum, t) => sum + t.amount, 0);

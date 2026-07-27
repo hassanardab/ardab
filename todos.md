@@ -56,7 +56,7 @@
 - version .4
   [_] remove the project/[id]/report header
   [_] the app should disply the phone top icons
-  [_]
+  [_] pdf report b-a sort
   [_]
   [_]
 
