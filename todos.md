@@ -53,7 +53,7 @@
 # phase 3
 
 - version .1
-  [_]
+  [_] build the app the correct way, icon high quality, size
   [_]
   [_]
   [_]

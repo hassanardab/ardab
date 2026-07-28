@@ -1,20 +1,38 @@
 import { formatCurrency } from "@/utils/format";
+import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { Image } from "react-native";
 import { Project, Transaction } from "../types";
 
 // Grab the local app logo reference
 const LOGO_ASSET = require("@/assets/images/icon.png");
 
-export const getFinancialReportHtml = (
+export const getFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
-  periodLabel: string = "تاريخ المشروع بالكامل", // Fallback to all-time
+  periodLabel: string = "تاريخ المشروع بالكامل",
 ) => {
-  // Resolve local image to a URI expo-print can load
-  const logoUri = Image.resolveAssetSource(LOGO_ASSET).uri;
+  let logoUri = "";
+
+  try {
+    // 1. Resolve and download the asset locally
+    const asset = Asset.fromModule(LOGO_ASSET);
+    await asset.downloadAsync();
+
+    // 2. Read the asset as a Base64 string
+    const base64 = await FileSystem.readAsStringAsync(
+      asset.localUri || asset.uri,
+      {
+        encoding: FileSystem.EncodingType.Base64,
+      },
+    );
+
+    // 3. Format it as an HTML-ready Data URI
+    logoUri = `data:image/png;base64,${base64}`;
+  } catch (error) {
+    console.error("Error loading base64 logo:", error);
+  }
 
   const projectTransactions = transactions
     .filter((t) => t.projectId === project.id)
@@ -24,13 +42,11 @@ export const getFinancialReportHtml = (
     .filter((t) => t.type !== "INCOME")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Generate today's date
   const todayDate = new Date().toLocaleDateString("ar-EG", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "INCOME":
@@ -275,7 +291,7 @@ export const generateFinancialReport = async (
   project: Project,
   transactions: Transaction[],
 ) => {
-  const html = getFinancialReportHtml(project, transactions);
+  const html = await getFinancialReportHtml(project, transactions);
 
   try {
     const { uri } = await Print.printToFileAsync({ html });

@@ -1,5 +1,12 @@
 import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react"; // 👈 Add useEffect, useState
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { WebView } from "react-native-webview";
 import {
   exportPdf,
@@ -8,14 +15,77 @@ import {
 import { useStore } from "../../../store/useStore";
 
 export default function ReportPreviewScreen() {
-  // Capture timeFilter from params
   const { id, timeFilter } = useLocalSearchParams<{
     id: string;
     timeFilter?: string;
   }>();
+
   const { projects, transactions } = useStore();
+  const [htmlContent, setHtmlContent] = useState<string>(""); // 👈 Add state for HTML
 
   const project = projects.find((p) => p.id === id);
+
+  useEffect(() => {
+    if (!project) return;
+
+    // 👇 Wrap generation in an async function
+    const generateHtml = async () => {
+      const filteredTransactions = transactions
+        .filter((t) => t.projectId === id)
+        .filter((t) => {
+          if (!timeFilter || timeFilter === "ALL") return true;
+
+          const txTime = new Date(t.date).getTime();
+          const now = new Date();
+
+          if (timeFilter === "THIS_MONTH") {
+            const start = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              1,
+            ).getTime();
+            return txTime >= start;
+          }
+          if (timeFilter === "LAST_MONTH") {
+            const start = new Date(
+              now.getFullYear(),
+              now.getMonth() - 1,
+              1,
+            ).getTime();
+            const end = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              0,
+              23,
+              59,
+              59,
+              999,
+            ).getTime();
+            return txTime >= start && txTime <= end;
+          }
+          if (timeFilter === "THIS_YEAR") {
+            const start = new Date(now.getFullYear(), 0, 1).getTime();
+            return txTime >= start;
+          }
+          return true;
+        });
+
+      let periodLabel = "تاريخ المشروع بالكامل";
+      if (timeFilter === "THIS_MONTH") periodLabel = "هذا الشهر";
+      if (timeFilter === "LAST_MONTH") periodLabel = "الشهر الماضي";
+      if (timeFilter === "THIS_YEAR") periodLabel = "هذا العام";
+
+      // 👇 Await the HTML generation
+      const html = await getFinancialReportHtml(
+        project,
+        filteredTransactions,
+        periodLabel,
+      );
+      setHtmlContent(html);
+    };
+
+    generateHtml();
+  }, [id, timeFilter, project, transactions]);
 
   if (!project) {
     return (
@@ -25,55 +95,15 @@ export default function ReportPreviewScreen() {
     );
   }
 
-  // 1. Filter logic based on the user's selected time period
-  const filteredTransactions = transactions
-    .filter((t) => t.projectId === id)
-    .filter((t) => {
-      if (!timeFilter || timeFilter === "ALL") return true;
-
-      const txTime = new Date(t.date).getTime();
-      const now = new Date();
-
-      if (timeFilter === "THIS_MONTH") {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        return txTime >= start;
-      }
-      if (timeFilter === "LAST_MONTH") {
-        const start = new Date(
-          now.getFullYear(),
-          now.getMonth() - 1,
-          1,
-        ).getTime();
-        const end = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          0,
-          23,
-          59,
-          59,
-          999,
-        ).getTime();
-        return txTime >= start && txTime <= end;
-      }
-      if (timeFilter === "THIS_YEAR") {
-        const start = new Date(now.getFullYear(), 0, 1).getTime();
-        return txTime >= start;
-      }
-      return true;
-    });
-
-  // 2. Generate the dynamic Arabic label for the selected period
-  let periodLabel = "تاريخ المشروع بالكامل";
-  if (timeFilter === "THIS_MONTH") periodLabel = "هذا الشهر";
-  if (timeFilter === "LAST_MONTH") periodLabel = "الشهر الماضي";
-  if (timeFilter === "THIS_YEAR") periodLabel = "هذا العام";
-
-  // 3. Pass the filtered transactions and the period label
-  const htmlContent = getFinancialReportHtml(
-    project,
-    filteredTransactions,
-    periodLabel,
-  );
+  // 👇 Show a loading state while processing the image to Base64
+  if (!htmlContent) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#111827" />
+        <Text style={{ marginTop: 12 }}>جاري تجهيز التقرير...</Text>
+      </View>
+    );
+  }
 
   const dateStr = new Date().toLocaleDateString("en-US", {
     month: "long",
@@ -102,6 +132,8 @@ export default function ReportPreviewScreen() {
     </View>
   );
 }
+
+// (Keep your styles exactly the same below here)
 
 // (Keep styles the exact same)
 const styles = StyleSheet.create({
