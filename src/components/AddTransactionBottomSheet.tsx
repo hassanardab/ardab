@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -28,8 +28,9 @@ export default function AddTransactionBottomSheet({
   transactionToEdit,
 }: Props) {
   const { addTransaction, updateTransaction } = useStore();
+  const amountInputRef = useRef<TextInput>(null);
   const [txType, setTxType] = useState<TransactionType>("EXPENSE");
-  const [txMethod, setTxMethod] = useState<PaymentMethod>("CASH");
+  const [txMethod, setTxMethod] = useState<PaymentMethod>("BANK");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
 
@@ -49,8 +50,12 @@ export default function AddTransactionBottomSheet({
         setTxDesc("");
         setTxDate(new Date());
         setTxType("EXPENSE");
-        setTxMethod("CASH");
+        setTxMethod("BANK");
       }
+      // Focus the amount input after the modal is fully rendered
+      setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 300);
     }
   }, [visible, transactionToEdit]);
 
@@ -163,6 +168,7 @@ export default function AddTransactionBottomSheet({
           </View>
 
           <TextInput
+            ref={amountInputRef}
             style={styles.input}
             placeholder="المبلغ"
             keyboardType="numeric"

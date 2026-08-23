@@ -1,18 +1,18 @@
 .
 ├── AGENTS.md
-├── app.json
 ├── CLAUDE.md
-├── expo-env.d.ts
 ├── LICENSE
-├── package.json
 ├── README.md
+├── app.json
+├── expo-env.d.ts
+├── package.json
 ├── scripts
 │   └── reset-project.js
 ├── src
 │   ├── app
+│   │   ├── _layout.tsx
 │   │   ├── index.tsx
 │   │   ├── invoices.tsx
-│   │   ├── _layout.tsx
 │   │   ├── profile.tsx
 │   │   ├── project
 │   │   │   ├── [id]
@@ -53,82 +53,11 @@
 
 14 directories, 38 files
 
-=== ./LICENSE ===
-The MIT License (MIT)
-
-Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-=== ./package.json ===
+=== ./.claude/settings.json ===
 {
-  "name": "ardab",
-  "main": "expo-router/entry",
-  "version": "1.0.0",
-  "dependencies": {
-    "@expo/ui": "~57.0.7",
-    "@expo/vector-icons": "^15.1.1",
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-community/datetimepicker": "9.1.0",
-    "@react-navigation/bottom-tabs": "^7.18.14",
-    "@react-navigation/native": "^7.3.14",
-    "expo": "~57.0.8",
-    "expo-constants": "~57.0.7",
-    "expo-device": "~57.0.1",
-    "expo-file-system": "~57.0.1",
-    "expo-font": "~57.0.1",
-    "expo-glass-effect": "~57.0.1",
-    "expo-image": "~57.0.1",
-    "expo-linking": "~57.0.4",
-    "expo-print": "~57.0.1",
-    "expo-router": "~57.0.8",
-    "expo-sharing": "~57.0.7",
-    "expo-splash-screen": "~57.0.5",
-    "expo-status-bar": "~57.0.1",
-    "expo-symbols": "~57.0.1",
-    "expo-system-ui": "~57.0.1",
-    "expo-web-browser": "~57.0.2",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-native": "0.86.0",
-    "react-native-gesture-handler": "~2.32.0",
-    "react-native-reanimated": "4.5.0",
-    "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "~4.26.0",
-    "react-native-web": "~0.21.0",
-    "react-native-webview": "13.16.1",
-    "react-native-worklets": "0.10.0",
-    "zustand": "^5.0.14"
-  },
-  "devDependencies": {
-    "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
-  },
-  "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "lint": "expo lint"
-  },
-  "private": true
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  }
 }
 
 === ./.gitignore ===
@@ -192,6 +121,32 @@ example
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code.
+
+=== ./CLAUDE.md ===
+@AGENTS.md
+
+=== ./LICENSE ===
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 === ./README.md ===
 # Welcome to your Expo app 👋
@@ -259,6 +214,10 @@ npx expo run:android --variant release
 
 rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|node*modules|dist|build|package-lock.json|tree.txt|codebase.txt'; find . -type d \( -name .expo -o -name android -o -name ios -o -name assets -o -name documents -o -name .git -o -name node_modules -o -name .idea -o -name dist -o -name build \) -prune -o -type f ! -name "tree.txt" ! -name "codebase.txt" ! -name "package-lock.json" ! -name "*.png" ! -name "_.jpg" ! -name "_.svg" ! -name "\_.ttf" ! -name "\*.log" -print | while read -r file; do echo -e "\n=== $file ==="; cat "$file"; done) > codebase.txt
 
+## run from phone
+
+adb reverse tcp:8081 tcp:8081
+
 ## v2.4:
 
 [x] we have a working apk release
@@ -274,6 +233,8 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
 [_] we can edit the project when hold
 [_] we have an invoice form
 [_] pdf invoice
+[_] we have loans on form
+[_] we have loans on pdf
 
 === ./app.json ===
 {
@@ -317,552 +278,253 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
   }
 }
 
-=== ./tsconfig.json ===
+=== ./package.json ===
 {
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ]
-    }
+  "name": "ardab",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "dependencies": {
+    "@expo/ui": "~57.0.7",
+    "@expo/vector-icons": "^15.1.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "9.1.0",
+    "@react-navigation/bottom-tabs": "^7.18.14",
+    "@react-navigation/native": "^7.3.14",
+    "expo": "~57.0.8",
+    "expo-constants": "~57.0.7",
+    "expo-device": "~57.0.1",
+    "expo-file-system": "~57.0.1",
+    "expo-font": "~57.0.1",
+    "expo-glass-effect": "~57.0.1",
+    "expo-image": "~57.0.1",
+    "expo-linking": "~57.0.4",
+    "expo-print": "~57.0.1",
+    "expo-router": "~57.0.8",
+    "expo-sharing": "~57.0.7",
+    "expo-splash-screen": "~57.0.5",
+    "expo-status-bar": "~57.0.1",
+    "expo-symbols": "~57.0.1",
+    "expo-system-ui": "~57.0.1",
+    "expo-web-browser": "~57.0.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-web": "~0.21.0",
+    "react-native-webview": "13.16.1",
+    "react-native-worklets": "0.10.0",
+    "zustand": "^5.0.14"
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "private": true
 }
 
-=== ./todos.md ===
-# phase 1
-
-- version .1
-  [x] create the app
-
-- version .2
-  [x]
-
-- version .3
-  [x]
-
-- version .4
-  [x] add change the bank to cash
-  [x] fix the first box on pdf report
-  [x] fix the column size on the genrated pdf
-  [x] add color coding to the report
-  [x] fix the file name.
-
-==========
-
-# phase 2
-
-- version .1
-  [x] report have time period
-  [x] can choose time period for filtering
-  [x] based on the filtered will generate preview and pdf
-  [x] add amount format on pdf
-  [x] app coloring and pdf coloring
-
-- version .2
-  [x] better spacing on the pdf report
-  [x] make the logo
-  [x] display the date period for the report
-  [x] add the logo to the app
-  [x] fix the last column on the pdf report
-
-- version .3
-  [x] can edit the transaction description
-  [_] better markting for the pdf report
-  [x] better UI for the report preview
-  [x] pdf reprot spacing on the other pages
-  [x] pdf report page numbering
-  ``
-- version .4
-  [_] remove the project/[id]/report header
-  [_] the app should disply the phone top icons
-  [x] pdf report b-a sort
-  [_] add the logo to the dashbaord page
-  [_] make the icon then the name next to it then add it to dashboard
-
-==========
-
-# phase 3
-
-- version .1
-  [_] build the app the correct way, icon high quality, size
-  [_]
-  [_]
-  [_]
-  [_]
-
-- version .2
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-- version .3
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-- version .4
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-==========
-
-# phase 4
-
-- version .1
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-- version .2
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-- version .3
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-- version .4
-  [_]
-  [_]
-  [_]
-  [_]
-  [_]
-
-=== ./CLAUDE.md ===
-@AGENTS.md
-
-=== ./src/global.css ===
-:root {
-  --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
-  --font-serif: Georgia, 'Times New Roman', serif;
-}
-
-=== ./src/types/index.ts ===
-//src/types/index.ts
-export type PaymentMethod = "CASH" | "BANK";
-export type TransactionType =
-  | "INCOME"
-  | "EXPENSE"
-  | "BILL"
-  | "PAYROLL"
-  | "TRANSFER";
-
-export interface Employee {
-  id: string;
-  name: string;
-  role: string;
-}
-export interface Vendor {
-  id: string;
-  name: string;
-  balance: number;
-}
-
-export interface Transaction {
-  id: string;
-  projectId: string;
-  type: TransactionType;
-  method: PaymentMethod;
-  amount: number;
-  description: string;
-  date: string;
-  employeeId?: string; // If payroll
-  vendorId?: string; // If bill/expense
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  initialCash: number;
-  initialBank: number;
-  currentCash: number;
-  currentBank: number;
-  createdAt: string;
-}
-
-=== ./src/services/PdfService.ts ===
-import { formatCurrency } from "@/utils/format";
-import { Asset } from "expo-asset";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import { Project, Transaction } from "../types";
-
-// Grab the local app logo reference
-const LOGO_ASSET = require("@/assets/images/icon.png");
+=== ./scripts/reset-project.js ===
+#!/usr/bin/env node
 
 /**
- * Get base64 data of an asset
+ * This script is used to reset the project to a blank state.
+ * It deletes or moves the /src and /scripts directories to /example based on user input and creates a new /src/app directory with an index.tsx and _layout.tsx file.
+ * You can remove the `reset-project` script from package.json and safely delete this file after running it.
  */
-async function getAssetBase64(asset: Asset): Promise<string> {
-  await asset.downloadAsync();
 
-  // Prefer localUri (file://), fallback to remote URI if necessary
-  let uri = asset.localUri || asset.uri;
+const fs = require("fs");
+const path = require("path");
+const readline = require("readline");
 
-  // If URI is a remote http(s) URL, download it locally first
-  if (uri.startsWith("http")) {
-    const localFile = FileSystem.documentDirectory + "temp_logo.png";
-    await FileSystem.downloadAsync(uri, localFile);
-    uri = localFile;
-  }
+const root = process.cwd();
+const oldDirs = ["src", "scripts"];
+const exampleDir = "example";
+const newAppDir = "src/app";
+const exampleDirPath = path.join(root, exampleDir);
 
-  // Read the file and encode to base64
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  return base64;
-}
+const indexContent = `import { Text, View, StyleSheet } from "react-native";
 
-export const getFinancialReportHtml = async (
-  project: Project,
-  transactions: Transaction[],
-  periodLabel: string = "تاريخ المشروع بالكامل",
-) => {
-  let logoUri = "";
-
-  try {
-    const asset = Asset.fromModule(LOGO_ASSET);
-    const base64 = await getAssetBase64(asset);
-    logoUri = `data:image/png;base64,${base64}`;
-  } catch (error) {
-    console.error("Failed to load logo for PDF:", error);
-  }
-
-  const projectTransactions = transactions
-    .filter((t) => t.projectId === project.id)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  const totalExpenses = projectTransactions
-    .filter((t) => t.type !== "INCOME")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const todayDate = new Date().toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "INCOME":
-        return "دخل";
-      case "EXPENSE":
-        return "مصروف";
-      case "PAYROLL":
-        return "رواتب";
-      case "BILL":
-        return "فاتورة";
-      case "TRANSFER":
-        return "تحويل";
-      default:
-        return type;
-    }
-  };
-
-  return `
-    <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          @page {
-            size: A4;
-            margin: 10mm;
-            @bottom-center {
-              content: counter(page);
-              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-              font-size: 12px;
-              color: #555;
-            }
-          }
-          body { 
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            color: #334155; 
-            direction: rtl; 
-            text-align: right; 
-          }
-          
-          /* Modern Header Layout */
-          .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 3px solid #1e293b;
-            padding-bottom: 20px;
-            margin-bottom: 25px;
-          }
-          .header-info { text-align: right; }
-          .header-info h1 {
-            margin: 0 0 10px 0;
-            color: #0f172a;
-            font-size: 26px;
-          }
-          .header-meta {
-            display: flex;
-            gap: 15px;
-            font-size: 13px;
-            color: #64748b;
-            flex-direction: row-reverse;
-          }
-          .header-meta span {
-            background-color: #f8fafc;
-            padding: 6px 12px;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-          }
-          .logo {
-            width: 100px;
-            height: 100px;
-            border-radius: 12px;
-            object-fit: contain;
-            margin-left: 10px;
-          }
-
-          /* Professional Balance Summary Box */
-          .summary-box { 
-            background: linear-gradient(145deg, #ffffff, #f8fafc);
-            padding: 20px; 
-            border-radius: 12px; 
-            margin-bottom: 30px; 
-            border: 1px solid #e2e8f0; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            page-break-inside: avoid; 
-          }
-          .summary-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #0f172a;
-            margin-top: 0;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 12px;
-          }
-          .balance-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-          }
-          .balance-card {
-            background-color: #ffffff;
-            padding: 18px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            text-align: center;
-          }
-          .balance-label {
-            display: block;
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 8px;
-          }
-          .balance-value { font-size: 24px; font-weight: bold; }
-          .cash { color: #059669; }
-          .bank { color: #2563eb; }
-          .expense-total {
-            margin-top: 20px;
-            text-align: center;
-            padding-top: 15px;
-            border-top: 1px dashed #cbd5e1;
-            font-size: 16px;
-            color: #334155;
-          }
-          
-          /* Table Styles */
-          h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
-          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
-          th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
-          
-          th:nth-child(1), td:nth-child(1) { width: 18%; }
-          th:nth-child(2), td:nth-child(2) { width: 14%; }
-          th:nth-child(3), td:nth-child(3) { width: 14%; }
-          th:nth-child(4), td:nth-child(4) { width: 32%; }
-          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; }
-
-          .type-expense  { background-color: transparent; }
-          .type-income   { background-color: #f0fff0; }
-          .type-bill     { background-color: #f0f0f0; }
-          .type-payroll  { background-color: #fdf5e6; }
-          .type-transfer { background-color: #f0f8ff; }
-
-          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
-          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
-        </style>
-      </head>
-      <body>
-        
-        <!-- Upgraded Header section -->
-        <div class="header-container">
-          <img src="${logoUri}" class="logo" alt="App Logo" />
-          <div class="header-info">
-            <h1>التقرير المالي: ${project.name}</h1>
-            <div class="header-meta">
-              <span><strong>الفترة:</strong> ${periodLabel}</span>
-              <span><strong>تاريخ الإصدار:</strong> ${todayDate}</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Upgraded Summary Grid -->
-        <div class="summary-box">
-          <h2 class="summary-title">مراجعة الأرصدة الحالية</h2>
-          
-          <div class="balance-grid">
-            <div class="balance-card">
-              <span class="balance-label">النقد الفعلي المتاح</span>
-              <span class="balance-value cash">${formatCurrency(project.currentCash)}</span>
-            </div>
-            <div class="balance-card">
-              <span class="balance-label">رصيد الحساب البنكي</span>
-              <span class="balance-value bank">${formatCurrency(project.currentBank)}</span>
-            </div>
-          </div>
-          
-          <div class="expense-total">
-            إجمالي المصروفات <strong>للفترة المحددة</strong>: <strong style="color: #ef4444">${formatCurrency(totalExpenses)}</strong>
-          </div>
-        </div>
-
-        <h2>سجل المعاملات (${projectTransactions.length})</h2>
-        <table>
-          <tr>
-            <th>التاريخ</th>
-            <th>النوع</th>
-            <th>الدفع</th>
-            <th>الوصف</th>
-            <th>المبلغ</th>
-          </tr>
-          ${projectTransactions
-            .map(
-              (t) => `
-            <tr class="type-${t.type.toLowerCase()}">
-              <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
-              <td>${getTypeLabel(t.type)}</td>
-              <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
-              <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
-              <td>
-                <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
-                  ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}
-                </span>
-              </td>
-            </tr>
-          `,
-            )
-            .join("")}
-        </table>
-      </body>
-    </html>
-  `;
-};
-
-export const exportPdf = async (
-  html: string,
-  customFileName: string = "report.pdf",
-) => {
-  try {
-    const { uri } = await Print.printToFileAsync({ html });
-
-    // Sanitize the filename to prevent iOS/Android crashing on illegal characters
-    const safeFileName = customFileName.replace(/[:/\\?%*|"<>]/g, "-");
-
-    // Dynamically extract the writable directory provided by expo-print
-    const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
-    const newUri = `${targetDirectory}${safeFileName}`;
-
-    await FileSystem.copyAsync({ from: uri, to: newUri });
-
-    await Sharing.shareAsync(newUri, {
-      UTI: ".pdf",
-      mimeType: "application/pdf",
-    });
-  } catch (error) {
-    console.error("Error exporting PDF:", error);
-  }
-};
-
-export const generateFinancialReport = async (
-  project: Project,
-  transactions: Transaction[],
-) => {
-  const html = await getFinancialReportHtml(project, transactions);
-
-  try {
-    const { uri } = await Print.printToFileAsync({ html });
-
-    const dateStr = new Date().toLocaleDateString("en-US", {
-      month: "long",
-      day: "2-digit",
-      year: "numeric",
-    });
-
-    const rawFileName = `التقرير المالي مشروع ${project.name}-${dateStr}.pdf`;
-    const safeFileName = rawFileName.replace(/[:/\\?%*|"<>]/g, "-");
-
-    // Dynamically extract the writable directory provided by expo-print
-    const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
-    const newUri = `${targetDirectory}${safeFileName}`;
-
-    await FileSystem.copyAsync({
-      from: uri,
-      to: newUri,
-    });
-
-    await Sharing.shareAsync(newUri, {
-      UTI: ".pdf",
-      mimeType: "application/pdf",
-    });
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
-
-=== ./src/app/profile.tsx ===
-import { StyleSheet, Text, View } from "react-native";
-
-export default function ProfileScreen() {
+export default function Index() {
   return (
-    <View style={styles.center}>
-      <Text>Profile Settings & Employees</Text>
+    <View style={styles.container}>
+      <Text>Edit src/app/index.tsx to edit this screen.</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
+`;
+
+const layoutContent = `import { Stack } from "expo-router";
+
+export default function RootLayout() {
+  return <Stack />;
+}
+`;
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+const moveDirectories = async (userInput) => {
+  try {
+    if (userInput === "y") {
+      // Create the app-example directory
+      await fs.promises.mkdir(exampleDirPath, { recursive: true });
+      console.log(`📁 /${exampleDir} directory created.`);
+    }
+
+    // Move old directories to new app-example directory or delete them
+    for (const dir of oldDirs) {
+      const oldDirPath = path.join(root, dir);
+      if (fs.existsSync(oldDirPath)) {
+        if (userInput === "y") {
+          const newDirPath = path.join(root, exampleDir, dir);
+          await fs.promises.rename(oldDirPath, newDirPath);
+          console.log(`➡️ /${dir} moved to /${exampleDir}/${dir}.`);
+        } else {
+          await fs.promises.rm(oldDirPath, { recursive: true, force: true });
+          console.log(`❌ /${dir} deleted.`);
+        }
+      } else {
+        console.log(`➡️ /${dir} does not exist, skipping.`);
+      }
+    }
+
+    // Create new /src/app directory
+    const newAppDirPath = path.join(root, newAppDir);
+    await fs.promises.mkdir(newAppDirPath, { recursive: true });
+    console.log("\n📁 New /src/app directory created.");
+
+    // Create index.tsx
+    const indexPath = path.join(newAppDirPath, "index.tsx");
+    await fs.promises.writeFile(indexPath, indexContent);
+    console.log("📄 src/app/index.tsx created.");
+
+    // Create _layout.tsx
+    const layoutPath = path.join(newAppDirPath, "_layout.tsx");
+    await fs.promises.writeFile(layoutPath, layoutContent);
+    console.log("📄 src/app/_layout.tsx created.");
+
+    console.log("\n✅ Project reset complete. Next steps:");
+    console.log(
+      `1. Run \`npx expo start\` to start a development server.\n2. Edit src/app/index.tsx to edit the main screen.\n3. Put all your application code in /src, only screens and layout files should be in /src/app.${
+        userInput === "y"
+          ? `\n4. Delete the /${exampleDir} directory when you're done referencing it.`
+          : ""
+      }`
+    );
+  } catch (error) {
+    console.error(`❌ Error during script execution: ${error.message}`);
+  }
+};
+
+rl.question(
+  "Do you want to move existing files to /example instead of deleting them? (Y/n): ",
+  (answer) => {
+    const userInput = answer.trim().toLowerCase() || "y";
+    if (userInput === "y" || userInput === "n") {
+      moveDirectories(userInput).finally(() => rl.close());
+    } else {
+      console.log("❌ Invalid input. Please enter 'Y' or 'N'.");
+      rl.close();
+    }
+  }
+);
+
+=== ./src/app/_layout.tsx ===
+import { MaterialIcons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import { useColorScheme } from "react-native";
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerStyle: { backgroundColor: "#ffffff" },
+        headerTintColor: "#000000",
+        tabBarActiveTintColor: "#000000",
+        tabBarInactiveTintColor: "#a7a9ac",
+        tabBarStyle: {
+          backgroundColor: "#ffffff",
+          borderTopColor: "#a7a9ac",
+          borderTopWidth: 0.5,
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "الرئيسية",
+          headerTitleAlign: "center",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="dashboard" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: "التقارير",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="analytics" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "الملف الشخصي",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="person" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="invoices"
+        options={{
+          title: "الفواتير",
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="receipt" size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* Hide the specific nested project routes from the tab bar */}
+      <Tabs.Screen
+        name="project/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="project/[id]/report"
+        options={{
+          href: null,
+        }}
+      />
+    </Tabs>
+  );
+}
 
 === ./src/app/index.tsx ===
 import { useRouter } from "expo-router";
@@ -1108,6 +770,21 @@ export default function MessagesScreen() {
   return (
     <View style={styles.center}>
       <Text>Invoices UI</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+});
+
+=== ./src/app/profile.tsx ===
+import { StyleSheet, Text, View } from "react-native";
+
+export default function ProfileScreen() {
+  return (
+    <View style={styles.center}>
+      <Text>Profile Settings & Employees</Text>
     </View>
   );
 }
@@ -1665,104 +1342,9 @@ const styles = StyleSheet.create({
   pdfBtnText: { color: "white", fontWeight: "500" },
 });
 
-=== ./src/app/_layout.tsx ===
-import { MaterialIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import { useColorScheme } from "react-native";
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <Tabs
-      screenOptions={{
-        headerStyle: { backgroundColor: "#ffffff" },
-        headerTintColor: "#000000",
-        tabBarActiveTintColor: "#000000",
-        tabBarInactiveTintColor: "#a7a9ac",
-        tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopColor: "#a7a9ac",
-          borderTopWidth: 0.5,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "الرئيسية",
-          headerTitleAlign: "center",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="dashboard" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: "التقارير",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="analytics" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "الملف الشخصي",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="person" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="invoices"
-        options={{
-          title: "الفواتير",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="receipt" size={24} color={color} />
-          ),
-        }}
-      />
-
-      {/* Hide the specific nested project routes from the tab bar */}
-      <Tabs.Screen
-        name="project/[id]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="project/[id]/report"
-        options={{
-          href: null,
-        }}
-      />
-    </Tabs>
-  );
-}
-
-=== ./src/components/themed-view.tsx ===
-import { View, type ViewProps } from 'react-native';
-
-import { ThemeColor } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-
-export type ThemedViewProps = ViewProps & {
-  lightColor?: string;
-  darkColor?: string;
-  type?: ThemeColor;
-};
-
-export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
-  const theme = useTheme();
-
-  return <View style={[{ backgroundColor: theme[type ?? 'background'] }, style]} {...otherProps} />;
-}
-
 === ./src/components/AddTransactionBottomSheet.tsx ===
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -1791,8 +1373,9 @@ export default function AddTransactionBottomSheet({
   transactionToEdit,
 }: Props) {
   const { addTransaction, updateTransaction } = useStore();
+  const amountInputRef = useRef<TextInput>(null);
   const [txType, setTxType] = useState<TransactionType>("EXPENSE");
-  const [txMethod, setTxMethod] = useState<PaymentMethod>("CASH");
+  const [txMethod, setTxMethod] = useState<PaymentMethod>("BANK");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
 
@@ -1812,8 +1395,12 @@ export default function AddTransactionBottomSheet({
         setTxDesc("");
         setTxDate(new Date());
         setTxType("EXPENSE");
-        setTxMethod("CASH");
+        setTxMethod("BANK");
       }
+      // Focus the amount input after the modal is fully rendered
+      setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 300);
     }
   }, [visible, transactionToEdit]);
 
@@ -1926,6 +1513,7 @@ export default function AddTransactionBottomSheet({
           </View>
 
           <TextInput
+            ref={amountInputRef}
             style={styles.input}
             placeholder="المبلغ"
             keyboardType="numeric"
@@ -2078,116 +1666,6 @@ const styles = StyleSheet.create({
   saveBtnText: { color: "white", fontWeight: "600" },
 });
 
-=== ./src/components/animated-icon.web.tsx ===
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe, Easing } from 'react-native-reanimated';
-
-import classes from './animated-icon.module.css';
-const DURATION = 300;
-
-export function AnimatedSplashOverlay() {
-  return null;
-}
-
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 0 }],
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(1.2),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    opacity: 0,
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    opacity: 0,
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(1.2),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '-180deg' }, { scale: 0.8 }],
-    opacity: 0,
-  },
-  [DURATION / 1000]: {
-    transform: [{ rotateZ: '0deg' }, { scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
-export function AnimatedIcon() {
-  return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View style={styles.background} entering={keyframe.duration(DURATION)}>
-        <div className={classes.expoLogoBackground} />
-      </Animated.View>
-
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    width: '100%',
-    zIndex: 1000,
-    position: 'absolute',
-    top: 128 / 2 + 138,
-  },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
-  },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-  },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
-  },
-  background: {
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
-});
-
 === ./src/components/animated-icon.module.css ===
 .expoLogoBackground {
   background-image: linear-gradient(180deg, #3c9ffe, #0274df);
@@ -2195,73 +1673,6 @@ const styles = StyleSheet.create({
   width: 128px;
   height: 128px;
 }
-
-=== ./src/components/ui/collapsible.tsx ===
-import { SymbolView } from 'expo-symbols';
-import { PropsWithChildren, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
-
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-
-export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const theme = useTheme();
-
-  return (
-    <ThemedView>
-      <Pressable
-        style={({ pressed }) => [styles.heading, pressed && styles.pressedHeading]}
-        onPress={() => setIsOpen((value) => !value)}>
-        <ThemedView type="backgroundElement" style={styles.button}>
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={14}
-            weight="bold"
-            tintColor={theme.text}
-            style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
-          />
-        </ThemedView>
-
-        <ThemedText type="small">{title}</ThemedText>
-      </Pressable>
-      {isOpen && (
-        <Animated.View entering={FadeIn.duration(200)}>
-          <ThemedView type="backgroundElement" style={styles.content}>
-            {children}
-          </ThemedView>
-        </Animated.View>
-      )}
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  heading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  pressedHeading: {
-    opacity: 0.7,
-  },
-  button: {
-    width: Spacing.four,
-    height: Spacing.four,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    marginTop: Spacing.three,
-    borderRadius: Spacing.three,
-    marginLeft: Spacing.four,
-    padding: Spacing.four,
-  },
-});
 
 === ./src/components/animated-icon.tsx ===
 import { Image } from 'expo-image';
@@ -2413,144 +1824,149 @@ const styles = StyleSheet.create({
   },
 });
 
-=== ./src/components/themed-text.tsx ===
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+=== ./src/components/animated-icon.web.tsx ===
+import { Image } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
+import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import classes from './animated-icon.module.css';
+const DURATION = 300;
 
-export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
-  themeColor?: ThemeColor;
-};
-
-export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
-  const theme = useTheme();
-
-  return (
-    <Text
-      style={[
-        { color: theme[themeColor ?? 'text'] },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
-        type === 'code' && styles.code,
-        style,
-      ]}
-      {...rest}
-    />
-  );
+export function AnimatedSplashOverlay() {
+  return null;
 }
 
-const styles = StyleSheet.create({
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
+const keyframe = new Keyframe({
+  0: {
+    transform: [{ scale: 0 }],
   },
-  smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
+  60: {
+    transform: [{ scale: 1.2 }],
+    easing: Easing.elastic(1.2),
   },
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: 500,
-  },
-  title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
-  },
-  subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 14,
-  },
-  linkPrimary: {
-    lineHeight: 30,
-    fontSize: 14,
-    color: '#3c87f7',
-  },
-  code: {
-    fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
-    fontSize: 12,
+  100: {
+    transform: [{ scale: 1 }],
+    easing: Easing.elastic(1.2),
   },
 });
 
-=== ./src/components/external-link.tsx ===
-import { Href, Link } from 'expo-router';
-import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
-import { type ComponentProps } from 'react';
+const logoKeyframe = new Keyframe({
+  0: {
+    opacity: 0,
+  },
+  60: {
+    transform: [{ scale: 1.2 }],
+    opacity: 0,
+    easing: Easing.elastic(1.2),
+  },
+  100: {
+    transform: [{ scale: 1 }],
+    opacity: 1,
+    easing: Easing.elastic(1.2),
+  },
+});
 
-type Props = Omit<ComponentProps<typeof Link>, 'href'> & { href: Href & string };
+const glowKeyframe = new Keyframe({
+  0: {
+    transform: [{ rotateZ: '-180deg' }, { scale: 0.8 }],
+    opacity: 0,
+  },
+  [DURATION / 1000]: {
+    transform: [{ rotateZ: '0deg' }, { scale: 1 }],
+    opacity: 1,
+    easing: Easing.elastic(0.7),
+  },
+  100: {
+    transform: [{ rotateZ: '7200deg' }],
+  },
+});
 
-export function ExternalLink({ href, ...rest }: Props) {
+export function AnimatedIcon() {
   return (
-    <Link
-      target="_blank"
-      {...rest}
-      href={href}
-      onPress={async (event) => {
-        if (process.env.EXPO_OS !== 'web') {
-          // Prevent the default behavior of linking to the default browser on native.
-          event.preventDefault();
-          // Open the link in an in-app browser.
-          await openBrowserAsync(href, {
-            presentationStyle: WebBrowserPresentationStyle.AUTOMATIC,
-          });
-        }
-      }}
-    />
-  );
-}
+    <View style={styles.iconContainer}>
+      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
+        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
+      </Animated.View>
 
-=== ./src/components/hint-row.tsx ===
-import type { ReactNode } from 'react';
-import { View, StyleSheet } from 'react-native';
+      <Animated.View style={styles.background} entering={keyframe.duration(DURATION)}>
+        <div className={classes.expoLogoBackground} />
+      </Animated.View>
 
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
-
-import { Spacing } from '@/constants/theme';
-
-type HintRowProps = {
-  title?: string;
-  hint?: ReactNode;
-};
-
-export function HintRow({ title = 'Try editing', hint = 'app/index.tsx' }: HintRowProps) {
-  return (
-    <View style={styles.stepRow}>
-      <ThemedText type="small">{title}</ThemedText>
-      <ThemedView type="backgroundSelected" style={styles.codeSnippet}>
-        <ThemedText themeColor="textSecondary">{hint}</ThemedText>
-      </ThemedView>
+      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
+        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stepRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  container: {
+    alignItems: 'center',
+    width: '100%',
+    zIndex: 1000,
+    position: 'absolute',
+    top: 128 / 2 + 138,
   },
-  codeSnippet: {
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.half,
-    paddingHorizontal: Spacing.two,
+  imageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  glow: {
+    width: 201,
+    height: 201,
+    position: 'absolute',
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 128,
+    height: 128,
+  },
+  image: {
+    position: 'absolute',
+    width: 76,
+    height: 71,
+  },
+  background: {
+    width: 128,
+    height: 128,
+    position: 'absolute',
   },
 });
+
+=== ./src/components/app-tabs.tsx ===
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { useColorScheme } from 'react-native';
+
+import { Colors } from '@/constants/theme';
+
+export default function AppTabs() {
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+
+  return (
+    <NativeTabs
+      backgroundColor={colors.background}
+      indicatorColor={colors.backgroundElement}
+      labelStyle={{ selected: { color: colors.text } }}>
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/home.png')}
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="explore">
+        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/explore.png')}
+          renderingMode="template"
+        />
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
 
 === ./src/components/app-tabs.web.tsx ===
 import {
@@ -2669,39 +2085,229 @@ const styles = StyleSheet.create({
   },
 });
 
-=== ./src/components/app-tabs.tsx ===
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+=== ./src/components/external-link.tsx ===
+import { Href, Link } from 'expo-router';
+import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
+import { type ComponentProps } from 'react';
 
-import { Colors } from '@/constants/theme';
+type Props = Omit<ComponentProps<typeof Link>, 'href'> & { href: Href & string };
 
-export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
+export function ExternalLink({ href, ...rest }: Props) {
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Link
+      target="_blank"
+      {...rest}
+      href={href}
+      onPress={async (event) => {
+        if (process.env.EXPO_OS !== 'web') {
+          // Prevent the default behavior of linking to the default browser on native.
+          event.preventDefault();
+          // Open the link in an in-app browser.
+          await openBrowserAsync(href, {
+            presentationStyle: WebBrowserPresentationStyle.AUTOMATIC,
+          });
+        }
+      }}
+    />
   );
 }
+
+=== ./src/components/hint-row.tsx ===
+import type { ReactNode } from 'react';
+import { View, StyleSheet } from 'react-native';
+
+import { ThemedText } from './themed-text';
+import { ThemedView } from './themed-view';
+
+import { Spacing } from '@/constants/theme';
+
+type HintRowProps = {
+  title?: string;
+  hint?: ReactNode;
+};
+
+export function HintRow({ title = 'Try editing', hint = 'app/index.tsx' }: HintRowProps) {
+  return (
+    <View style={styles.stepRow}>
+      <ThemedText type="small">{title}</ThemedText>
+      <ThemedView type="backgroundSelected" style={styles.codeSnippet}>
+        <ThemedText themeColor="textSecondary">{hint}</ThemedText>
+      </ThemedView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  stepRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  codeSnippet: {
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.two,
+  },
+});
+
+=== ./src/components/themed-text.tsx ===
+import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+
+import { Fonts, ThemeColor } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+
+export type ThemedTextProps = TextProps & {
+  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  themeColor?: ThemeColor;
+};
+
+export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
+  const theme = useTheme();
+
+  return (
+    <Text
+      style={[
+        { color: theme[themeColor ?? 'text'] },
+        type === 'default' && styles.default,
+        type === 'title' && styles.title,
+        type === 'small' && styles.small,
+        type === 'smallBold' && styles.smallBold,
+        type === 'subtitle' && styles.subtitle,
+        type === 'link' && styles.link,
+        type === 'linkPrimary' && styles.linkPrimary,
+        type === 'code' && styles.code,
+        style,
+      ]}
+      {...rest}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  small: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: 500,
+  },
+  smallBold: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: 700,
+  },
+  default: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: 500,
+  },
+  title: {
+    fontSize: 48,
+    fontWeight: 600,
+    lineHeight: 52,
+  },
+  subtitle: {
+    fontSize: 32,
+    lineHeight: 44,
+    fontWeight: 600,
+  },
+  link: {
+    lineHeight: 30,
+    fontSize: 14,
+  },
+  linkPrimary: {
+    lineHeight: 30,
+    fontSize: 14,
+    color: '#3c87f7',
+  },
+  code: {
+    fontFamily: Fonts.mono,
+    fontWeight: Platform.select({ android: 700 }) ?? 500,
+    fontSize: 12,
+  },
+});
+
+=== ./src/components/themed-view.tsx ===
+import { View, type ViewProps } from 'react-native';
+
+import { ThemeColor } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+
+export type ThemedViewProps = ViewProps & {
+  lightColor?: string;
+  darkColor?: string;
+  type?: ThemeColor;
+};
+
+export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
+  const theme = useTheme();
+
+  return <View style={[{ backgroundColor: theme[type ?? 'background'] }, style]} {...otherProps} />;
+}
+
+=== ./src/components/ui/collapsible.tsx ===
+import { SymbolView } from 'expo-symbols';
+import { PropsWithChildren, useState } from 'react';
+import { Pressable, StyleSheet } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+
+export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const theme = useTheme();
+
+  return (
+    <ThemedView>
+      <Pressable
+        style={({ pressed }) => [styles.heading, pressed && styles.pressedHeading]}
+        onPress={() => setIsOpen((value) => !value)}>
+        <ThemedView type="backgroundElement" style={styles.button}>
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            size={14}
+            weight="bold"
+            tintColor={theme.text}
+            style={{ transform: [{ rotate: isOpen ? '-90deg' : '90deg' }] }}
+          />
+        </ThemedView>
+
+        <ThemedText type="small">{title}</ThemedText>
+      </Pressable>
+      {isOpen && (
+        <Animated.View entering={FadeIn.duration(200)}>
+          <ThemedView type="backgroundElement" style={styles.content}>
+            {children}
+          </ThemedView>
+        </Animated.View>
+      )}
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  heading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  pressedHeading: {
+    opacity: 0.7,
+  },
+  button: {
+    width: Spacing.four,
+    height: Spacing.four,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  content: {
+    marginTop: Spacing.three,
+    borderRadius: Spacing.three,
+    marginLeft: Spacing.four,
+    padding: Spacing.four,
+  },
+});
 
 === ./src/components/web-badge.tsx ===
 import { version } from 'expo/package.json';
@@ -2747,71 +2353,6 @@ const styles = StyleSheet.create({
     aspectRatio: 123 / 24,
   },
 });
-
-=== ./src/utils/format.ts ===
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(amount);
-};
-
-export const formatNumberInput = (value: string): string => {
-  // Keep digits only
-  const digits = value.replace(/[^\d]/g, "");
-
-  if (!digits) return "";
-
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 0,
-  }).format(Number(digits));
-};
-
-export const parseFormattedNumber = (value: string): number => {
-  return Number(value.replace(/,/g, ""));
-};
-
-=== ./src/hooks/use-color-scheme.web.ts ===
-import { useEffect, useState } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
-
-/**
- * To support static rendering, this value needs to be re-calculated on the client side for web
- */
-export function useColorScheme() {
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  const colorScheme = useRNColorScheme();
-
-  if (hasHydrated) {
-    return colorScheme;
-  }
-
-  return 'light';
-}
-
-=== ./src/hooks/use-theme.ts ===
-/**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
- */
-
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
-}
-
-=== ./src/hooks/use-color-scheme.ts ===
-export { useColorScheme } from 'react-native';
 
 === ./src/constants/theme.ts ===
 /**
@@ -2880,6 +2421,409 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+=== ./src/global.css ===
+:root {
+  --font-display:
+    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
+    Segoe UI Symbol, Noto Color Emoji;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+}
+
+=== ./src/hooks/use-color-scheme.ts ===
+export { useColorScheme } from 'react-native';
+
+=== ./src/hooks/use-color-scheme.web.ts ===
+import { useEffect, useState } from 'react';
+import { useColorScheme as useRNColorScheme } from 'react-native';
+
+/**
+ * To support static rendering, this value needs to be re-calculated on the client side for web
+ */
+export function useColorScheme() {
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
+
+  const colorScheme = useRNColorScheme();
+
+  if (hasHydrated) {
+    return colorScheme;
+  }
+
+  return 'light';
+}
+
+=== ./src/hooks/use-theme.ts ===
+/**
+ * Learn more about light and dark modes:
+ * https://docs.expo.dev/guides/color-schemes/
+ */
+
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export function useTheme() {
+  const scheme = useColorScheme();
+  const theme = scheme === 'unspecified' ? 'light' : scheme;
+
+  return Colors[theme];
+}
+
+=== ./src/services/PdfService.ts ===
+import { formatCurrency } from "@/utils/format";
+import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { Project, Transaction } from "../types";
+
+// Grab the local app logo reference
+const LOGO_ASSET = require("@/assets/images/icon.png");
+
+/**
+ * Get base64 data of an asset – robust for debug and release builds.
+ */
+async function getAssetBase64(asset: Asset): Promise<string> {
+  // 1. Ensure the asset is downloaded to the cache
+  await asset.downloadAsync();
+
+  // 2. Try to get a usable URI
+  let uri = asset.localUri || asset.uri;
+
+  // 3. If it's a remote HTTP(S) URL, download it to a temporary file
+  if (uri.startsWith("http://") || uri.startsWith("https://")) {
+    const localFile = FileSystem.documentDirectory + "temp_logo.png";
+    await FileSystem.downloadAsync(uri, localFile);
+    uri = localFile;
+  }
+
+  // 4. Now try to read the file as base64
+  try {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64;
+  } catch (readError) {
+    // 5. Fallback: if reading fails, try to copy the asset to a writable location first
+    console.warn("Reading asset failed, attempting to copy:", readError);
+    const fallbackPath = FileSystem.documentDirectory + "fallback_logo.png";
+    await FileSystem.copyAsync({ from: uri, to: fallbackPath });
+    const base64 = await FileSystem.readAsStringAsync(fallbackPath, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64;
+  }
+}
+
+export const getFinancialReportHtml = async (
+  project: Project,
+  transactions: Transaction[],
+  periodLabel: string = "تاريخ المشروع بالكامل",
+) => {
+  let logoUri = "";
+
+  try {
+    const asset = Asset.fromModule(LOGO_ASSET);
+    const base64 = await getAssetBase64(asset);
+    logoUri = `data:image/png;base64,${base64}`;
+  } catch (error) {
+    console.error("Failed to load logo for PDF:", error);
+  }
+
+  const projectTransactions = transactions
+    .filter((t) => t.projectId === project.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalExpenses = projectTransactions
+    .filter((t) => t.type !== "INCOME")
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const todayDate = new Date().toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "INCOME":
+        return "دخل";
+      case "EXPENSE":
+        return "مصروف";
+      case "PAYROLL":
+        return "رواتب";
+      case "BILL":
+        return "فاتورة";
+      case "TRANSFER":
+        return "تحويل";
+      default:
+        return type;
+    }
+  };
+
+  return `
+    <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+        <style>
+          @page {
+            size: A4;
+            margin: 10mm;
+            @bottom-center {
+              content: counter(page);
+              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+              font-size: 12px;
+              color: #555;
+            }
+          }
+          body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            color: #334155; 
+            direction: rtl; 
+            text-align: right; 
+          }
+          
+          /* Modern Header Layout */
+          .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1e293b;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+          }
+          .header-info { text-align: right; }
+          .header-info h1 {
+            margin: 0 0 10px 0;
+            color: #0f172a;
+            font-size: 26px;
+          }
+          .header-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #64748b;
+            flex-direction: row-reverse;
+          }
+          .header-meta span {
+            background-color: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+          }
+          .logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 12px;
+            object-fit: contain;
+            margin-left: 10px;
+          }
+
+          /* Professional Balance Summary Box */
+          .summary-box { 
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 30px; 
+            border: 1px solid #e2e8f0; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            page-break-inside: avoid; 
+          }
+          .summary-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 12px;
+          }
+          .balance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+          }
+          .balance-card {
+            background-color: #ffffff;
+            padding: 18px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+          }
+          .balance-label {
+            display: block;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .balance-value { font-size: 24px; font-weight: bold; }
+          .cash { color: #059669; }
+          .bank { color: #2563eb; }
+          .expense-total {
+            margin-top: 20px;
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px dashed #cbd5e1;
+            font-size: 16px;
+            color: #334155;
+          }
+          
+          /* Table Styles */
+          h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
+          th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
+          
+          th:nth-child(1), td:nth-child(1) { width: 18%; }
+          th:nth-child(2), td:nth-child(2) { width: 14%; }
+          th:nth-child(3), td:nth-child(3) { width: 14%; }
+          th:nth-child(4), td:nth-child(4) { width: 32%; }
+          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; }
+
+          .type-expense  { background-color: transparent; }
+          .type-income   { background-color: #f0fff0; }
+          .type-bill     { background-color: #f0f0f0; }
+          .type-payroll  { background-color: #fdf5e6; }
+          .type-transfer { background-color: #f0f8ff; }
+
+          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
+          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
+        </style>
+      </head>
+      <body>
+        
+        <!-- Upgraded Header section -->
+        <div class="header-container">
+          <img src="${logoUri}" class="logo" alt="App Logo" />
+          <div class="header-info">
+            <h1>التقرير المالي: ${project.name}</h1>
+            <div class="header-meta">
+              <span><strong>الفترة:</strong> ${periodLabel}</span>
+              <span><strong>تاريخ الإصدار:</strong> ${todayDate}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Upgraded Summary Grid -->
+        <div class="summary-box">
+          <h2 class="summary-title">مراجعة الأرصدة الحالية</h2>
+          
+          <div class="balance-grid">
+            <div class="balance-card">
+              <span class="balance-label">النقد الفعلي المتاح</span>
+              <span class="balance-value cash">${formatCurrency(project.currentCash)}</span>
+            </div>
+            <div class="balance-card">
+              <span class="balance-label">رصيد الحساب البنكي</span>
+              <span class="balance-value bank">${formatCurrency(project.currentBank)}</span>
+            </div>
+          </div>
+          
+          <div class="expense-total">
+            إجمالي المصروفات <strong>للفترة المحددة</strong>: <strong style="color: #ef4444">${formatCurrency(totalExpenses)}</strong>
+          </div>
+        </div>
+
+        <h2>سجل المعاملات (${projectTransactions.length})</h2>
+        <table>
+          <tr>
+            <th>التاريخ</th>
+            <th>النوع</th>
+            <th>الدفع</th>
+            <th>الوصف</th>
+            <th>المبلغ</th>
+          </tr>
+          ${projectTransactions
+            .map(
+              (t) => `
+            <tr class="type-${t.type.toLowerCase()}">
+              <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
+              <td>${getTypeLabel(t.type)}</td>
+              <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
+              <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
+              <td>
+                <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
+                  ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}
+                </span>
+              </td>
+            </tr>
+          `,
+            )
+            .join("")}
+        </table>
+      </body>
+    </html>
+  `;
+};
+
+export const exportPdf = async (
+  html: string,
+  customFileName: string = "report.pdf",
+) => {
+  try {
+    const { uri } = await Print.printToFileAsync({ html });
+
+    // Sanitize the filename to prevent iOS/Android crashing on illegal characters
+    const safeFileName = customFileName.replace(/[:/\\?%*|"<>]/g, "-");
+
+    // Dynamically extract the writable directory provided by expo-print
+    const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
+    const newUri = `${targetDirectory}${safeFileName}`;
+
+    await FileSystem.copyAsync({ from: uri, to: newUri });
+
+    await Sharing.shareAsync(newUri, {
+      UTI: ".pdf",
+      mimeType: "application/pdf",
+    });
+  } catch (error) {
+    console.error("Error exporting PDF:", error);
+  }
+};
+
+export const generateFinancialReport = async (
+  project: Project,
+  transactions: Transaction[],
+) => {
+  const html = await getFinancialReportHtml(project, transactions);
+
+  try {
+    const { uri } = await Print.printToFileAsync({ html });
+
+    const dateStr = new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "2-digit",
+      year: "numeric",
+    });
+
+    const rawFileName = `التقرير المالي مشروع ${project.name}-${dateStr}.pdf`;
+    const safeFileName = rawFileName.replace(/[:/\\?%*|"<>]/g, "-");
+
+    // Dynamically extract the writable directory provided by expo-print
+    const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
+    const newUri = `${targetDirectory}${safeFileName}`;
+
+    await FileSystem.copyAsync({
+      from: uri,
+      to: newUri,
+    });
+
+    await Sharing.shareAsync(newUri, {
+      UTI: ".pdf",
+      mimeType: "application/pdf",
+    });
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+  }
+};
 
 === ./src/store/useStore.ts ===
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -3103,129 +3047,210 @@ export const useStore = create<AppState>()(
   ),
 );
 
-=== ./scripts/reset-project.js ===
-#!/usr/bin/env node
+=== ./src/types/index.ts ===
+//src/types/index.ts
+export type PaymentMethod = "CASH" | "BANK";
+export type TransactionType =
+  | "INCOME"
+  | "EXPENSE"
+  | "BILL"
+  | "PAYROLL"
+  | "TRANSFER";
 
-/**
- * This script is used to reset the project to a blank state.
- * It deletes or moves the /src and /scripts directories to /example based on user input and creates a new /src/app directory with an index.tsx and _layout.tsx file.
- * You can remove the `reset-project` script from package.json and safely delete this file after running it.
- */
-
-const fs = require("fs");
-const path = require("path");
-const readline = require("readline");
-
-const root = process.cwd();
-const oldDirs = ["src", "scripts"];
-const exampleDir = "example";
-const newAppDir = "src/app";
-const exampleDirPath = path.join(root, exampleDir);
-
-const indexContent = `import { Text, View, StyleSheet } from "react-native";
-
-export default function Index() {
-  return (
-    <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+export interface Employee {
+  id: string;
+  name: string;
+  role: string;
+}
+export interface Vendor {
+  id: string;
+  name: string;
+  balance: number;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
-`;
-
-const layoutContent = `import { Stack } from "expo-router";
-
-export default function RootLayout() {
-  return <Stack />;
+export interface Transaction {
+  id: string;
+  projectId: string;
+  type: TransactionType;
+  method: PaymentMethod;
+  amount: number;
+  description: string;
+  date: string;
+  employeeId?: string; // If payroll
+  vendorId?: string; // If bill/expense
 }
-`;
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+export interface Project {
+  id: string;
+  name: string;
+  initialCash: number;
+  initialBank: number;
+  currentCash: number;
+  currentBank: number;
+  createdAt: string;
+}
 
-const moveDirectories = async (userInput) => {
-  try {
-    if (userInput === "y") {
-      // Create the app-example directory
-      await fs.promises.mkdir(exampleDirPath, { recursive: true });
-      console.log(`📁 /${exampleDir} directory created.`);
-    }
-
-    // Move old directories to new app-example directory or delete them
-    for (const dir of oldDirs) {
-      const oldDirPath = path.join(root, dir);
-      if (fs.existsSync(oldDirPath)) {
-        if (userInput === "y") {
-          const newDirPath = path.join(root, exampleDir, dir);
-          await fs.promises.rename(oldDirPath, newDirPath);
-          console.log(`➡️ /${dir} moved to /${exampleDir}/${dir}.`);
-        } else {
-          await fs.promises.rm(oldDirPath, { recursive: true, force: true });
-          console.log(`❌ /${dir} deleted.`);
-        }
-      } else {
-        console.log(`➡️ /${dir} does not exist, skipping.`);
-      }
-    }
-
-    // Create new /src/app directory
-    const newAppDirPath = path.join(root, newAppDir);
-    await fs.promises.mkdir(newAppDirPath, { recursive: true });
-    console.log("\n📁 New /src/app directory created.");
-
-    // Create index.tsx
-    const indexPath = path.join(newAppDirPath, "index.tsx");
-    await fs.promises.writeFile(indexPath, indexContent);
-    console.log("📄 src/app/index.tsx created.");
-
-    // Create _layout.tsx
-    const layoutPath = path.join(newAppDirPath, "_layout.tsx");
-    await fs.promises.writeFile(layoutPath, layoutContent);
-    console.log("📄 src/app/_layout.tsx created.");
-
-    console.log("\n✅ Project reset complete. Next steps:");
-    console.log(
-      `1. Run \`npx expo start\` to start a development server.\n2. Edit src/app/index.tsx to edit the main screen.\n3. Put all your application code in /src, only screens and layout files should be in /src/app.${
-        userInput === "y"
-          ? `\n4. Delete the /${exampleDir} directory when you're done referencing it.`
-          : ""
-      }`
-    );
-  } catch (error) {
-    console.error(`❌ Error during script execution: ${error.message}`);
-  }
+=== ./src/utils/format.ts ===
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(amount);
 };
 
-rl.question(
-  "Do you want to move existing files to /example instead of deleting them? (Y/n): ",
-  (answer) => {
-    const userInput = answer.trim().toLowerCase() || "y";
-    if (userInput === "y" || userInput === "n") {
-      moveDirectories(userInput).finally(() => rl.close());
-    } else {
-      console.log("❌ Invalid input. Please enter 'Y' or 'N'.");
-      rl.close();
+export const formatNumberInput = (value: string): string => {
+  // Keep digits only
+  const digits = value.replace(/[^\d]/g, "");
+
+  if (!digits) return "";
+
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(Number(digits));
+};
+
+export const parseFormattedNumber = (value: string): number => {
+  return Number(value.replace(/,/g, ""));
+};
+
+=== ./todos.md ===
+# phase 1
+
+- version .1
+  [x] create the app
+
+- version .2
+  [x]
+
+- version .3
+  [x]
+
+- version .4
+  [x] add change the bank to cash
+  [x] fix the first box on pdf report
+  [x] fix the column size on the genrated pdf
+  [x] add color coding to the report
+  [x] fix the file name.
+
+==========
+
+# phase 2
+
+- version .1
+  [x] report have time period
+  [x] can choose time period for filtering
+  [x] based on the filtered will generate preview and pdf
+  [x] add amount format on pdf
+  [x] app coloring and pdf coloring
+
+- version .2
+  [x] better spacing on the pdf report
+  [x] make the logo
+  [x] display the date period for the report
+  [x] add the logo to the app
+  [x] fix the last column on the pdf report
+
+- version .3
+  [x] can edit the transaction description
+  [_] better markting for the pdf report
+  [x] better UI for the report preview
+  [x] pdf reprot spacing on the other pages
+  [x] pdf report page numbering
+  ``
+- version .4
+  [_] remove the project/[id]/report header
+  [_] the app should disply the phone top icons
+  [x] pdf report b-a sort
+  [_] add the logo to the dashbaord page
+  [_] make the icon then the name next to it then add it to dashboard
+
+==========
+
+# phase 3
+
+- version .1
+  [_] build the app the correct way, icon high quality, size
+  [_]
+  [_]
+  [_]
+  [_]
+
+- version .2
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+- version .3
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+- version .4
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+==========
+
+# phase 4
+
+- version .1
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+- version .2
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+- version .3
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+- version .4
+  [_]
+  [_]
+  [_]
+  [_]
+  [_]
+
+=== ./tsconfig.json ===
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@/assets/*": [
+        "./assets/*"
+      ]
     }
-  }
-);
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}
 
 === ./expo-env.d.ts ===
 /// <reference types="expo/types" />
 
 // NOTE: This file should not be edited and should be in your git ignore
-=== ./.claude/settings.json ===
-{
-  "enabledPlugins": {
-    "expo@claude-plugins-official": true
-  }
-}
