@@ -11,8 +11,8 @@
 ├── src
 │   ├── app
 │   │   ├── index.tsx
+│   │   ├── invoices.tsx
 │   │   ├── _layout.tsx
-│   │   ├── messages.tsx
 │   │   ├── profile.tsx
 │   │   ├── project
 │   │   │   ├── [id]
@@ -251,16 +251,36 @@ Join our community of developers creating universal apps.
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
+## create release
+
+npx expo run:android --variant release
+
 # create a codebase file
 
 rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|node*modules|dist|build|package-lock.json|tree.txt|codebase.txt'; find . -type d \( -name .expo -o -name android -o -name ios -o -name assets -o -name documents -o -name .git -o -name node_modules -o -name .idea -o -name dist -o -name build \) -prune -o -type f ! -name "tree.txt" ! -name "codebase.txt" ! -name "package-lock.json" ! -name "*.png" ! -name "_.jpg" ! -name "_.svg" ! -name "\_.ttf" ! -name "\*.log" -print | while read -r file; do echo -e "\n=== $file ==="; cat "$file"; done) > codebase.txt
+
+## v2.4:
+
+[x] we have a working apk release
+[x] documnet how to release
+[x] new version then git push
+[x] all the videos are mkv
+[x] build the tab for invocies
+[x] fix the report logo
+[_] fix the form speed function
+
+## v2.5
+
+[_] we can edit the project when hold
+[_] we have an invoice form
+[_] pdf invoice
 
 === ./app.json ===
 {
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "2.3",
+    "version": "2.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon_white_background.png",
     "scheme": "ardab",
@@ -362,7 +382,7 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
   [x] better UI for the report preview
   [x] pdf reprot spacing on the other pages
   [x] pdf report page numbering
-
+  ``
 - version .4
   [_] remove the project/[id]/report header
   [_] the app should disply the phone top icons
@@ -502,6 +522,29 @@ import { Project, Transaction } from "../types";
 // Grab the local app logo reference
 const LOGO_ASSET = require("@/assets/images/icon.png");
 
+/**
+ * Get base64 data of an asset
+ */
+async function getAssetBase64(asset: Asset): Promise<string> {
+  await asset.downloadAsync();
+
+  // Prefer localUri (file://), fallback to remote URI if necessary
+  let uri = asset.localUri || asset.uri;
+
+  // If URI is a remote http(s) URL, download it locally first
+  if (uri.startsWith("http")) {
+    const localFile = FileSystem.documentDirectory + "temp_logo.png";
+    await FileSystem.downloadAsync(uri, localFile);
+    uri = localFile;
+  }
+
+  // Read the file and encode to base64
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return base64;
+}
+
 export const getFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
@@ -510,22 +553,11 @@ export const getFinancialReportHtml = async (
   let logoUri = "";
 
   try {
-    // 1. Resolve and download the asset locally
     const asset = Asset.fromModule(LOGO_ASSET);
-    await asset.downloadAsync();
-
-    // 2. Read the asset as a Base64 string
-    const base64 = await FileSystem.readAsStringAsync(
-      asset.localUri || asset.uri,
-      {
-        encoding: FileSystem.EncodingType.Base64,
-      },
-    );
-
-    // 3. Format it as an HTML-ready Data URI
+    const base64 = await getAssetBase64(asset);
     logoUri = `data:image/png;base64,${base64}`;
   } catch (error) {
-    console.error("Error loading base64 logo:", error);
+    console.error("Failed to load logo for PDF:", error);
   }
 
   const projectTransactions = transactions
@@ -740,7 +772,7 @@ export const getFinancialReportHtml = async (
               <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
               <td>${getTypeLabel(t.type)}</td>
               <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
-              <td>${t.description} ${t.vendorName ? `(${t.vendorName})` : ""}</td>
+              <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
               <td>
                 <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
                   ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}
@@ -1069,13 +1101,13 @@ const styles = StyleSheet.create({
   saveBtnText: { color: "white", fontWeight: "600" },
 });
 
-=== ./src/app/messages.tsx ===
+=== ./src/app/invoices.tsx ===
 import { StyleSheet, Text, View } from "react-native";
 
 export default function MessagesScreen() {
   return (
     <View style={styles.center}>
-      <Text>Messages UI</Text>
+      <Text>Invoices UI</Text>
     </View>
   );
 }
@@ -1684,11 +1716,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="messages"
+        name="invoices"
         options={{
-          title: "الرسائل",
+          title: "الفواتير",
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="message" size={24} color={color} />
+            <MaterialIcons name="receipt" size={24} color={color} />
           ),
         }}
       />

@@ -8,6 +8,41 @@ import { Project, Transaction } from "../types";
 // Grab the local app logo reference
 const LOGO_ASSET = require("@/assets/images/icon.png");
 
+/**
+ * Get base64 data of an asset – robust for debug and release builds.
+ */
+async function getAssetBase64(asset: Asset): Promise<string> {
+  // 1. Ensure the asset is downloaded to the cache
+  await asset.downloadAsync();
+
+  // 2. Try to get a usable URI
+  let uri = asset.localUri || asset.uri;
+
+  // 3. If it's a remote HTTP(S) URL, download it to a temporary file
+  if (uri.startsWith("http://") || uri.startsWith("https://")) {
+    const localFile = FileSystem.documentDirectory + "temp_logo.png";
+    await FileSystem.downloadAsync(uri, localFile);
+    uri = localFile;
+  }
+
+  // 4. Now try to read the file as base64
+  try {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64;
+  } catch (readError) {
+    // 5. Fallback: if reading fails, try to copy the asset to a writable location first
+    console.warn("Reading asset failed, attempting to copy:", readError);
+    const fallbackPath = FileSystem.documentDirectory + "fallback_logo.png";
+    await FileSystem.copyAsync({ from: uri, to: fallbackPath });
+    const base64 = await FileSystem.readAsStringAsync(fallbackPath, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64;
+  }
+}
+
 export const getFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
@@ -16,22 +51,11 @@ export const getFinancialReportHtml = async (
   let logoUri = "";
 
   try {
-    // 1. Resolve and download the asset locally
     const asset = Asset.fromModule(LOGO_ASSET);
-    await asset.downloadAsync();
-
-    // 2. Read the asset as a Base64 string
-    const base64 = await FileSystem.readAsStringAsync(
-      asset.localUri || asset.uri,
-      {
-        encoding: FileSystem.EncodingType.Base64,
-      },
-    );
-
-    // 3. Format it as an HTML-ready Data URI
+    const base64 = await getAssetBase64(asset);
     logoUri = `data:image/png;base64,${base64}`;
   } catch (error) {
-    console.error("Error loading base64 logo:", error);
+    console.error("Failed to load logo for PDF:", error);
   }
 
   const projectTransactions = transactions
@@ -246,7 +270,7 @@ export const getFinancialReportHtml = async (
               <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
               <td>${getTypeLabel(t.type)}</td>
               <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
-              <td>${t.description} ${t.vendorName ? `(${t.vendorName})` : ""}</td>
+              <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
               <td>
                 <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
                   ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}

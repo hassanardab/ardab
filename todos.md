@@ -40,7 +40,7 @@
   [x] better UI for the report preview
   [x] pdf reprot spacing on the other pages
   [x] pdf report page numbering
-
+  ``
 - version .4
   [_] remove the project/[id]/report header
   [_] the app should disply the phone top icons

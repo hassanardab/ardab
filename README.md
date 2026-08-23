@@ -66,9 +66,17 @@ rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|no
 ## v2.4:
 
 [x] we have a working apk release
-[_] documnet how to release
-[_] new version then git push
-[o] all the videos are mkv
-[_] build the tab for invocies
-[_] fix the report logo
+[x] documnet how to release
+[x] new version then git push
+[x] all the videos are mkv
+[x] build the tab for invocies
+[x] fix the report logo
 [_] fix the form speed function
+
+## v2.5
+
+[_] we can edit the project when hold
+[_] we have an invoice form
+[_] pdf invoice
+[_] we have loans on form
+[_] we have loans on pdf
