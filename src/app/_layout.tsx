@@ -48,11 +48,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="messages"
+        name="invoices"
         options={{
-          title: "الرسائل",
+          title: "الفواتير",
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="message" size={24} color={color} />
+            <MaterialIcons name="receipt" size={24} color={color} />
           ),
         }}
       />

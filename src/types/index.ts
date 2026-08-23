@@ -12,6 +12,11 @@ export interface Employee {
   name: string;
   role: string;
 }
+export interface Vendor {
+  id: string;
+  name: string;
+  balance: number;
+}
 
 export interface Transaction {
   id: string;
@@ -22,7 +27,7 @@ export interface Transaction {
   description: string;
   date: string;
   employeeId?: string; // If payroll
-  vendorName?: string; // If bill/expense
+  vendorId?: string; // If bill/expense
 }
 
 export interface Project {
