@@ -9,6 +9,10 @@ interface AppState {
   employees: Employee[];
   addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
   addTransaction: (transaction: Transaction) => void;
+  updateProject: (
+    id: string,
+    updates: Partial<Omit<Project, "id" | "createdAt">>,
+  ) => void;
   removeTransaction: (transactionId: string) => void;
   updateTransaction: (transaction: Transaction) => void;
   addEmployee: (employee: Employee) => void;
@@ -36,6 +40,12 @@ export const useStore = create<AppState>()(
       addEmployee: (employee) =>
         set((state) => ({
           employees: [...state.employees, employee],
+        })),
+      updateProject: (id, updates) =>
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id ? { ...p, ...updates } : p,
+          ),
         })),
 
       addTransaction: (transaction) =>

@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,13 +12,15 @@ import {
 } from "react-native";
 import AddTransactionBottomSheet from "../components/AddTransactionBottomSheet";
 import { useStore } from "../store/useStore";
+import { Project } from "../types";
 import { formatCurrency } from "../utils/format";
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { projects, addProject } = useStore();
+  const { projects, addProject, updateProject } = useStore();
   const [newProjectName, setNewProjectName] = useState("");
-
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editName, setEditName] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
@@ -33,6 +36,19 @@ export default function DashboardScreen() {
       createdAt: new Date().toISOString(),
     });
     setNewProjectName("");
+  };
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setEditName(project.name);
+  };
+
+  const saveEdit = () => {
+    if (editingProject && editName.trim()) {
+      updateProject(editingProject.id, { name: editName.trim() });
+      setEditingProject(null);
+      setEditName("");
+    }
   };
 
   const openTransactionModal = (projectId: string) => {
@@ -55,6 +71,7 @@ export default function DashboardScreen() {
           key={project.id}
           style={styles.card}
           onPress={() => router.push(`/project/${project.id}`)}
+          onLongPress={() => handleEditProject(project)}
           activeOpacity={0.7}
         >
           <Text style={styles.cardTitle}>{project.name}</Text>
@@ -109,6 +126,44 @@ export default function DashboardScreen() {
           onClose={() => setIsModalVisible(false)}
         />
       )}
+      {/* Edit Project Modal */}
+      <Modal
+        visible={!!editingProject}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingProject(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.editModalContent}>
+            <Text style={styles.modalHeader}>العديل على المشروع </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="اسم المشروع"
+              value={editName}
+              onChangeText={setEditName}
+              textAlign="right"
+              autoFocus
+            />
+            <View style={styles.editModalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.saveBtn]}
+                onPress={saveEdit}
+              >
+                <Text style={styles.saveBtnText}>حفظ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={() => {
+                  setEditingProject(null);
+                  setEditName("");
+                }}
+              >
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -121,6 +176,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
+  editModalContent: {
+    backgroundColor: "white",
+    padding: 24,
+    borderRadius: 20,
+    margin: 24,
+    // center vertically
+    marginTop: "auto",
+    marginBottom: "auto",
+  },
+  editModalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  // we reuse modalOverlay from existing styles (it's defined below)
+  // but we need to ensure it's available; it's already there for the transaction modal
+  // So we can reuse it.
+
   header: {
     fontSize: 24,
     fontWeight: "bold",
