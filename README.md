@@ -79,8 +79,9 @@ adb reverse tcp:8081 tcp:8081
 
 ## v2.5
 
-[_] we can edit the project when hold
+[x] we can edit the project when hold
 [_] we have an invoice form
 [_] pdf invoice
 [_] we have loans on form
 [_] we have loans on pdf
+[_] on hold we can delete from the edit form

@@ -39,3 +39,21 @@ export interface Project {
   currentBank: number;
   createdAt: string;
 }
+export interface InvoiceItem {
+  id: string;
+  item: string;
+  description?: string;
+  quantity: number;
+  price: number;
+}
+
+export interface Invoice {
+  id: string;
+  companyName: string;
+  companyLogo?: string; // base64 or local URI
+  customerName: string;
+  date: string; // ISO date
+  items: InvoiceItem[];
+  tax: number; // percentage, e.g. 15 for 15%
+  discount: number; // percentage, e.g. 10 for 10%
+}

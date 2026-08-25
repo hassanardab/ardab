@@ -1,12 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { Employee, Project, Transaction } from "../types";
+import { Employee, Invoice, Project, Transaction } from "../types";
 
 interface AppState {
   projects: Project[];
   transactions: Transaction[];
   employees: Employee[];
+  invoices: Invoice[];
   addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
   addTransaction: (transaction: Transaction) => void;
   updateProject: (
@@ -16,6 +17,9 @@ interface AppState {
   removeTransaction: (transactionId: string) => void;
   updateTransaction: (transaction: Transaction) => void;
   addEmployee: (employee: Employee) => void;
+  addInvoice: (invoice: Invoice) => void;
+  updateInvoice: (id: string, updates: Partial<Omit<Invoice, "id">>) => void;
+  deleteInvoice: (id: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -24,7 +28,21 @@ export const useStore = create<AppState>()(
       projects: [],
       transactions: [],
       employees: [],
-
+      invoices: [],
+      addInvoice: (invoice) =>
+        set((state) => ({
+          invoices: [...state.invoices, invoice],
+        })),
+      updateInvoice: (id, updates) =>
+        set((state) => ({
+          invoices: state.invoices.map((inv) =>
+            inv.id === id ? { ...inv, ...updates } : inv,
+          ),
+        })),
+      deleteInvoice: (id) =>
+        set((state) => ({
+          invoices: state.invoices.filter((inv) => inv.id !== id),
+        })),
       addProject: (projectData) =>
         set((state) => ({
           projects: [
