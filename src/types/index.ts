@@ -4,6 +4,8 @@ export type TransactionType =
   | "INCOME"
   | "EXPENSE"
   | "BILL"
+  | "TRANSPORTATION"
+  | "ABDU"
   | "PAYROLL"
   | "TRANSFER";
 

@@ -78,7 +78,26 @@ export default function ProjectDetailScreen() {
   const paginatedTransactions = useMemo(() => {
     return filteredTransactions.slice(0, visibleCount);
   }, [filteredTransactions, visibleCount]);
-
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case "INCOME":
+        return "دخل";
+      case "EXPENSE":
+        return "مصروف";
+      case "BILL":
+        return "فاتورة";
+      case "PAYROLL":
+        return "رواتب";
+      case "TRANSFER":
+        return "تحويل";
+      case "ABDU":
+        return "منصرف عبدالمنعم";
+      case "TRANSPORTATION":
+        return "ترحيل ومواصلات";
+      default:
+        return type;
+    }
+  };
   const handleLoadMore = () => {
     if (visibleCount < filteredTransactions.length) {
       setVisibleCount((prev) => prev + 20);
@@ -180,10 +199,13 @@ export default function ProjectDetailScreen() {
 
                 <View style={styles.txInfo}>
                   <Text style={styles.txDesc}>{item.description}</Text>
-                  <Text style={styles.txDate}>
-                    {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
-                    {item.method === "CASH" ? "نقدي" : "بنكي"}
-                  </Text>
+                  <View style={styles.txMetaRow}>
+                    <Text style={styles.txType}>{getTypeLabel(item.type)}</Text>
+                    <Text style={styles.txDate}>
+                      {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
+                      {item.method === "CASH" ? "نقدي" : "بنكي"}
+                    </Text>
+                  </View>
                 </View>
 
                 <Text
@@ -320,5 +342,21 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "300",
     lineHeight: 30,
+  },
+  txMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  txType: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#374151",
+    backgroundColor: "#e5e7eb",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    overflow: "hidden",
   },
 });

@@ -42,11 +42,10 @@ async function getAssetBase64(asset: Asset): Promise<string> {
     return base64;
   }
 }
-
 export const getFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
-  periodLabel: string = "تاريخ المشروع بالكامل",
+  periodLabel: string = "تاريـخ المشـروع بالكامل",
 ) => {
   let logoUri = "";
 
@@ -62,6 +61,23 @@ export const getFinancialReportHtml = async (
     .filter((t) => t.projectId === project.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  // ----- NEW: compute totals per category -----
+  const categoryTotals: Record<string, number> = {
+    INCOME: 0,
+    EXPENSE: 0,
+    BILL: 0,
+    PAYROLL: 0,
+    TRANSFER: 0,
+    ABDU: 0,
+    TRANSPORTATION: 0,
+  };
+  projectTransactions.forEach((t) => {
+    if (categoryTotals[t.type] !== undefined) {
+      categoryTotals[t.type] += t.amount;
+    }
+  });
+
+  const totalIncome = categoryTotals.INCOME;
   const totalExpenses = projectTransactions
     .filter((t) => t.type !== "INCOME")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -71,22 +87,41 @@ export const getFinancialReportHtml = async (
     month: "long",
     day: "numeric",
   });
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "INCOME":
         return "دخل";
       case "EXPENSE":
-        return "مصروف";
+        return "ميز";
+      case "TRANSPORTATION":
+        return "ترحيل ومواصلات";
+      case "ABDU":
+        return "منصرف عبدالمنعم";
       case "PAYROLL":
-        return "رواتب";
+        return "يوميات ورواتب";
       case "BILL":
-        return "فاتورة";
+        return "فواتير";
       case "TRANSFER":
-        return "تحويل";
+        return "سحب كاش";
       default:
         return type;
     }
   };
+
+  // ----- NEW: helper to generate category table rows -----
+  const categoryRows = Object.entries(categoryTotals)
+    .map(
+      ([type, amount]) => `
+      <tr>
+        <td style="padding:8px; border:1px solid #cbd5e1; text-align:right;">${getTypeLabel(type)}</td>
+        <td style="padding:8px; border:1px solid #cbd5e1; text-align:left; ${type === "INCOME" ? "color:#10b981;" : "color:#ef4444;"}">
+          ${formatCurrency(amount)}
+        </td>
+      </tr>
+    `,
+    )
+    .join("");
 
   return `
     <html dir="rtl" lang="ar">
@@ -149,7 +184,7 @@ export const getFinancialReportHtml = async (
             margin-left: 10px;
           }
 
-          /* Professional Balance Summary Box */
+          /* Professional Balance & Summary Box */
           .summary-box { 
             background: linear-gradient(145deg, #ffffff, #f8fafc);
             padding: 20px; 
@@ -189,26 +224,49 @@ export const getFinancialReportHtml = async (
           .balance-value { font-size: 24px; font-weight: bold; }
           .cash { color: #059669; }
           .bank { color: #2563eb; }
-          .expense-total {
+
+          /* ----- NEW: category summary table styles ----- */
+          .category-summary {
             margin-top: 20px;
-            text-align: center;
             padding-top: 15px;
             border-top: 1px dashed #cbd5e1;
+          }
+          .category-summary h3 {
             font-size: 16px;
+            color: #0f172a;
+            margin: 0 0 10px 0;
+          }
+          .category-summary table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .category-summary th {
+            background-color: #f1f5f9;
+            font-weight: bold;
             color: #334155;
           }
-          
-          /* Table Styles */
+          .category-summary td, .category-summary th {
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+          }
+          .category-summary .total-row {
+            background-color: #f8fafc;
+            font-weight: bold;
+          }
+          .category-summary .total-row td {
+            border-top: 2px solid #1e293b;
+          }
+
+          /* Transaction Table Styles */
           h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
-          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-          th, td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
-          th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
-          
-          th:nth-child(1), td:nth-child(1) { width: 18%; }
-          th:nth-child(2), td:nth-child(2) { width: 14%; }
-          th:nth-child(3), td:nth-child(3) { width: 14%; }
-          th:nth-child(4), td:nth-child(4) { width: 32%; }
-          th:nth-child(5), td:nth-child(5) { width: 22%; text-align: left; }
+          table.transactions { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          table.transactions th, table.transactions td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
+          table.transactions th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
+          table.transactions th:nth-child(1), table.transactions td:nth-child(1) { width: 18%; }
+          table.transactions th:nth-child(2), table.transactions td:nth-child(2) { width: 14%; }
+          table.transactions th:nth-child(3), table.transactions td:nth-child(3) { width: 14%; }
+          table.transactions th:nth-child(4), table.transactions td:nth-child(4) { width: 32%; }
+          table.transactions th:nth-child(5), table.transactions td:nth-child(5) { width: 22%; text-align: left; }
 
           .type-expense  { background-color: transparent; }
           .type-income   { background-color: #f0fff0; }
@@ -222,7 +280,7 @@ export const getFinancialReportHtml = async (
       </head>
       <body>
         
-        <!-- Upgraded Header section -->
+        <!-- Header section -->
         <div class="header-container">
           <img src="${logoUri}" class="logo" alt="App Logo" />
           <div class="header-info">
@@ -234,10 +292,11 @@ export const getFinancialReportHtml = async (
           </div>
         </div>
         
-        <!-- Upgraded Summary Grid -->
+        <!-- Summary Box (Balances + Category Summary) -->
         <div class="summary-box">
-          <h2 class="summary-title">مراجعة الأرصدة الحالية</h2>
+          <h2 class="summary-title">ملخص الأرصدة والمعاملات</h2>
           
+          <!-- Balance cards -->
           <div class="balance-grid">
             <div class="balance-card">
               <span class="balance-label">النقد الفعلي المتاح</span>
@@ -248,14 +307,37 @@ export const getFinancialReportHtml = async (
               <span class="balance-value bank">${formatCurrency(project.currentBank)}</span>
             </div>
           </div>
-          
-          <div class="expense-total">
-            إجمالي المصروفات <strong>للفترة المحددة</strong>: <strong style="color: #ef4444">${formatCurrency(totalExpenses)}</strong>
+
+          <!-- ----- NEW: Category Summary Table ----- -->
+          <div class="category-summary">
+            <h3>ملخص المعاملات حسب الفئة</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align:right;">الفئة</th>
+                  <th style="text-align:left;">المبلغ</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${categoryRows}
+                <!-- Total income row -->
+                <tr class="total-row">
+                  <td style="text-align:right;">إجمالي الإيرادات</td>
+                  <td style="text-align:left; color:#10b981;">${formatCurrency(totalIncome)}</td>
+                </tr>
+                <!-- Total expenses row -->
+                <tr class="total-row">
+                  <td style="text-align:right;">إجمالي المصروفات (غير الدخل)</td>
+                  <td style="text-align:left; color:#ef4444;">${formatCurrency(totalExpenses)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
+        <!-- Transaction list -->
         <h2>سجل المعاملات (${projectTransactions.length})</h2>
-        <table>
+        <table class="transactions">
           <tr>
             <th>التاريخ</th>
             <th>النوع</th>

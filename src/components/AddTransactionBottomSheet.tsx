@@ -111,32 +111,42 @@ export default function AddTransactionBottomSheet({
 
           <Text style={styles.modalLabel}>نوع المعاملة</Text>
           <View style={styles.row}>
-            {["EXPENSE", "INCOME", "PAYROLL", "BILL", "TRANSFER"].map(
-              (type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.chip, txType === type && styles.chipActive]}
-                  onPress={() => setTxType(type as TransactionType)}
+            {[
+              "EXPENSE",
+              "INCOME",
+              "ABDU",
+              "PAYROLL",
+              "BILL",
+              "TRANSPORTATION",
+              "TRANSFER",
+            ].map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[styles.chip, txType === type && styles.chipActive]}
+                onPress={() => setTxType(type as TransactionType)}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    txType === type && styles.chipTextActive,
+                  ]}
                 >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      txType === type && styles.chipTextActive,
-                    ]}
-                  >
-                    {type === "INCOME"
-                      ? "دخل"
-                      : type === "EXPENSE"
-                        ? "مصروف"
-                        : type === "PAYROLL"
-                          ? "رواتب"
-                          : type === "BILL"
-                            ? "فاتورة"
-                            : "تحويل"}
-                  </Text>
-                </TouchableOpacity>
-              ),
-            )}
+                  {type === "INCOME"
+                    ? "دخل"
+                    : type === "EXPENSE"
+                      ? "مصروف"
+                      : type === "PAYROLL"
+                        ? "رواتب"
+                        : type === "ABDU"
+                          ? "منصرف عبدو"
+                          : type === "TRANSPORTATION"
+                            ? "مواصلات وترحيل"
+                            : type === "BILL"
+                              ? "فاتورة"
+                              : "تحويل"}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <Text style={styles.modalLabel}>
