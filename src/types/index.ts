@@ -7,6 +7,7 @@ export type TransactionType =
   | "TRANSPORTATION"
   | "ABDU"
   | "PAYROLL"
+  | "BANK_FEE"
   | "TRANSFER";
 
 export interface Employee {

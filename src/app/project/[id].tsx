@@ -90,6 +90,8 @@ export default function ProjectDetailScreen() {
         return "رواتب";
       case "TRANSFER":
         return "تحويل";
+      case "BANK_FEE":
+        return "رسوم تحويل بنكي";
       case "ABDU":
         return "منصرف عبدالمنعم";
       case "TRANSPORTATION":

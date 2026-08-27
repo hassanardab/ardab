@@ -68,6 +68,7 @@ export const getFinancialReportHtml = async (
     BILL: 0,
     PAYROLL: 0,
     TRANSFER: 0,
+    BANK_FEE: 0,
     ABDU: 0,
     TRANSPORTATION: 0,
   };
@@ -98,6 +99,8 @@ export const getFinancialReportHtml = async (
         return "ترحيل ومواصلات";
       case "ABDU":
         return "منصرف عبدالمنعم";
+      case "BANK_FEE":
+        return "رسوم تحويل بنكك";
       case "PAYROLL":
         return "يوميات ورواتب";
       case "BILL":

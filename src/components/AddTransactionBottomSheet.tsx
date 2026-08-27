@@ -119,6 +119,7 @@ export default function AddTransactionBottomSheet({
               "BILL",
               "TRANSPORTATION",
               "TRANSFER",
+              "BANK_FEE",
             ].map((type) => (
               <TouchableOpacity
                 key={type}
@@ -139,11 +140,13 @@ export default function AddTransactionBottomSheet({
                         ? "رواتب"
                         : type === "ABDU"
                           ? "منصرف عبدو"
-                          : type === "TRANSPORTATION"
-                            ? "مواصلات وترحيل"
-                            : type === "BILL"
-                              ? "فاتورة"
-                              : "تحويل"}
+                          : type === "BANK_FEE"
+                            ? "رسوم تحويل بنكك"
+                            : type === "TRANSPORTATION"
+                              ? "مواصلات وترحيل"
+                              : type === "BILL"
+                                ? "فاتورة"
+                                : "تحويل"}
                 </Text>
               </TouchableOpacity>
             ))}
