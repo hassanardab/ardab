@@ -1094,6 +1094,8 @@ export default function ProjectDetailScreen() {
         return "رواتب";
       case "TRANSFER":
         return "تحويل";
+      case "BANK_FEE":
+        return "رسوم تحويل بنكي";
       case "ABDU":
         return "منصرف عبدالمنعم";
       case "TRANSPORTATION":
@@ -1710,6 +1712,7 @@ export default function AddTransactionBottomSheet({
               "BILL",
               "TRANSPORTATION",
               "TRANSFER",
+              "BANK_FEE",
             ].map((type) => (
               <TouchableOpacity
                 key={type}
@@ -1730,11 +1733,13 @@ export default function AddTransactionBottomSheet({
                         ? "رواتب"
                         : type === "ABDU"
                           ? "منصرف عبدو"
-                          : type === "TRANSPORTATION"
-                            ? "مواصلات وترحيل"
-                            : type === "BILL"
-                              ? "فاتورة"
-                              : "تحويل"}
+                          : type === "BANK_FEE"
+                            ? "رسوم تحويل بنكك"
+                            : type === "TRANSPORTATION"
+                              ? "مواصلات وترحيل"
+                              : type === "BILL"
+                                ? "فاتورة"
+                                : "تحويل"}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -3316,6 +3321,7 @@ export const getFinancialReportHtml = async (
     BILL: 0,
     PAYROLL: 0,
     TRANSFER: 0,
+    BANK_FEE: 0,
     ABDU: 0,
     TRANSPORTATION: 0,
   };
@@ -3346,6 +3352,8 @@ export const getFinancialReportHtml = async (
         return "ترحيل ومواصلات";
       case "ABDU":
         return "منصرف عبدالمنعم";
+      case "BANK_FEE":
+        return "رسوم تحويل بنكك";
       case "PAYROLL":
         return "يوميات ورواتب";
       case "BILL":
@@ -3937,6 +3945,7 @@ export type TransactionType =
   | "TRANSPORTATION"
   | "ABDU"
   | "PAYROLL"
+  | "BANK_FEE"
   | "TRANSFER";
 
 export interface Employee {

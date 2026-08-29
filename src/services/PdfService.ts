@@ -42,6 +42,7 @@ async function getAssetBase64(asset: Asset): Promise<string> {
     return base64;
   }
 }
+
 export const getFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
@@ -61,7 +62,7 @@ export const getFinancialReportHtml = async (
     .filter((t) => t.projectId === project.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // ----- NEW: compute totals per category -----
+  // compute totals per category
   const categoryTotals: Record<string, number> = {
     INCOME: 0,
     EXPENSE: 0,
@@ -112,7 +113,7 @@ export const getFinancialReportHtml = async (
     }
   };
 
-  // ----- NEW: helper to generate category table rows -----
+  // helper to generate category table rows
   const categoryRows = Object.entries(categoryTotals)
     .map(
       ([type, amount]) => `
@@ -228,7 +229,7 @@ export const getFinancialReportHtml = async (
           .cash { color: #059669; }
           .bank { color: #2563eb; }
 
-          /* ----- NEW: category summary table styles ----- */
+          /* Category summary table styles */
           .category-summary {
             margin-top: 20px;
             padding-top: 15px;
@@ -265,11 +266,11 @@ export const getFinancialReportHtml = async (
           table.transactions { width: 100%; border-collapse: collapse; table-layout: fixed; }
           table.transactions th, table.transactions td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
           table.transactions th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
-          table.transactions th:nth-child(1), table.transactions td:nth-child(1) { width: 18%; }
-          table.transactions th:nth-child(2), table.transactions td:nth-child(2) { width: 14%; }
-          table.transactions th:nth-child(3), table.transactions td:nth-child(3) { width: 14%; }
-          table.transactions th:nth-child(4), table.transactions td:nth-child(4) { width: 32%; }
-          table.transactions th:nth-child(5), table.transactions td:nth-child(5) { width: 22%; text-align: left; }
+          table.transactions th:nth-child(1), table.transactions td:nth-child(1) { width: 13%; }
+          table.transactions th:nth-child(2), table.transactions td:nth-child(2) { width: 20%; }
+          table.transactions th:nth-child(3), table.transactions td:nth-child(3) { width: 8%; }
+          table.transactions th:nth-child(4), table.transactions td:nth-child(4) { width: 43%; }
+          table.transactions th:nth-child(5), table.transactions td:nth-child(5) { width: 15%; text-align: left; }
 
           .type-expense  { background-color: transparent; }
           .type-income   { background-color: #f0fff0; }
@@ -279,6 +280,11 @@ export const getFinancialReportHtml = async (
 
           .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
           .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
+
+          /* NEW: force transaction section to start on a new page */
+          .transactions-section {
+            page-break-before: always;
+          }
         </style>
       </head>
       <body>
@@ -295,7 +301,7 @@ export const getFinancialReportHtml = async (
           </div>
         </div>
         
-        <!-- Summary Box (Balances + Category Summary) -->
+        <!-- Summary Box (Balances + Category Summary) – stays on page 1 -->
         <div class="summary-box">
           <h2 class="summary-title">ملخص الأرصدة والمعاملات</h2>
           
@@ -311,7 +317,7 @@ export const getFinancialReportHtml = async (
             </div>
           </div>
 
-          <!-- ----- NEW: Category Summary Table ----- -->
+          <!-- Category Summary Table -->
           <div class="category-summary">
             <h3>ملخص المعاملات حسب الفئة</h3>
             <table>
@@ -338,34 +344,36 @@ export const getFinancialReportHtml = async (
           </div>
         </div>
 
-        <!-- Transaction list -->
-        <h2>سجل المعاملات (${projectTransactions.length})</h2>
-        <table class="transactions">
-          <tr>
-            <th>التاريخ</th>
-            <th>النوع</th>
-            <th>الدفع</th>
-            <th>الوصف</th>
-            <th>المبلغ</th>
-          </tr>
-          ${projectTransactions
-            .map(
-              (t) => `
-            <tr class="type-${t.type.toLowerCase()}">
-              <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
-              <td>${getTypeLabel(t.type)}</td>
-              <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
-              <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
-              <td>
-                <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
-                  ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}
-                </span>
-              </td>
+        <!-- Transaction list – forced to a new page -->
+        <div class="transactions-section">
+          <h2>سجل المعاملات (${projectTransactions.length})</h2>
+          <table class="transactions">
+            <tr>
+              <th>التاريخ</th>
+              <th>النوع</th>
+              <th>الدفع</th>
+              <th>الوصف</th>
+              <th>المبلغ</th>
             </tr>
-          `,
-            )
-            .join("")}
-        </table>
+            ${projectTransactions
+              .map(
+                (t) => `
+              <tr class="type-${t.type.toLowerCase()}">
+                <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
+                <td>${getTypeLabel(t.type)}</td>
+                <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
+                <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
+                <td>
+                  <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
+                    ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}
+                  </span>
+                </td>
+              </tr>
+            `,
+              )
+              .join("")}
+          </table>
+        </div>
       </body>
     </html>
   `;
