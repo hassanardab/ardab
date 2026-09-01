@@ -3,7 +3,26 @@ import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import { Project, Transaction } from "../types";
+import { Invoice, Project, Transaction } from "../types";
+
+// Import the separate invoice templates
+import { getBodyShopInvoiceHtml } from "./invoiceTemplates/bodyShop";
+import { getSparePartsInvoiceHtml } from "./invoiceTemplates/spareParts";
+
+/**
+ * Convert a local file URI to base64 data URI.
+ */
+async function getImageBase64(uri: string): Promise<string> {
+  try {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return `data:image/png;base64,${base64}`;
+  } catch (error) {
+    console.warn("Could not read image, using fallback:", error);
+    return "";
+  }
+}
 
 // Grab the local app logo reference
 const LOGO_ASSET = require("@/assets/images/icon.png");
@@ -12,27 +31,21 @@ const LOGO_ASSET = require("@/assets/images/icon.png");
  * Get base64 data of an asset – robust for debug and release builds.
  */
 async function getAssetBase64(asset: Asset): Promise<string> {
-  // 1. Ensure the asset is downloaded to the cache
   await asset.downloadAsync();
-
-  // 2. Try to get a usable URI
   let uri = asset.localUri || asset.uri;
 
-  // 3. If it's a remote HTTP(S) URL, download it to a temporary file
   if (uri.startsWith("http://") || uri.startsWith("https://")) {
     const localFile = FileSystem.documentDirectory + "temp_logo.png";
     await FileSystem.downloadAsync(uri, localFile);
     uri = localFile;
   }
 
-  // 4. Now try to read the file as base64
   try {
     const base64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
     return base64;
   } catch (readError) {
-    // 5. Fallback: if reading fails, try to copy the asset to a writable location first
     console.warn("Reading asset failed, attempting to copy:", readError);
     const fallbackPath = FileSystem.documentDirectory + "fallback_logo.png";
     await FileSystem.copyAsync({ from: uri, to: fallbackPath });
@@ -42,6 +55,117 @@ async function getAssetBase64(asset: Asset): Promise<string> {
     return base64;
   }
 }
+
+/**
+ * Generate invoice HTML based on invoice type.
+ * - BODY_SHOP: detailed estimate‑style layout.
+ * - SPARE_PARTS: compact sales invoice layout.
+ */
+export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
+  // Convert company logo if available
+  let logoDataUri = "";
+  if (invoice.companyLogo) {
+    logoDataUri = await getImageBase64(invoice.companyLogo);
+  }
+
+  // Calculate totals
+  const subtotal = invoice.items.reduce(
+    (sum, item) => sum + item.quantity * item.price,
+    0,
+  );
+  const taxAmount = (subtotal * invoice.tax) / 100;
+  const discountAmount = (subtotal * invoice.discount) / 100;
+  const total = subtotal + taxAmount - discountAmount;
+
+  const formatMoney = (value: number) => formatCurrency(value);
+  const dateStr = new Date(invoice.date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const generatedDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const escapeHtml = (value: string | undefined | null) => {
+    if (!value) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
+  // Build items rows (common for both designs)
+  const itemsRows = invoice.items
+    .map(
+      (item, index) => `
+        <tr>
+          <td class="line-number">${index + 1}</td>
+          <td class="item-description">
+            <div class="item-name">${escapeHtml(item.item)}</div>
+            ${
+              item.description
+                ? `<div class="item-details">${escapeHtml(item.description)}</div>`
+                : ""
+            }
+          </td>
+          <td class="operation">${escapeHtml(item.description) || "-"}</td>
+          <td class="units">${item.quantity}</td>
+          <td class="unit-price">${formatMoney(item.price)}</td>
+          <td class="total-price">${formatMoney(item.quantity * item.price)}</td>
+        </tr>
+      `,
+    )
+    .join("");
+
+  // Choose template based on invoice type
+  if (invoice.type === "BODY_SHOP") {
+    return getBodyShopInvoiceHtml(
+      invoice,
+      logoDataUri,
+      formatMoney,
+      escapeHtml,
+      dateStr,
+      generatedDate,
+      subtotal,
+      taxAmount,
+      discountAmount,
+      total,
+      itemsRows,
+    );
+  } else {
+    return getSparePartsInvoiceHtml(
+      invoice,
+      logoDataUri,
+      formatMoney,
+      escapeHtml,
+      dateStr,
+      generatedDate,
+      subtotal,
+      taxAmount,
+      discountAmount,
+      total,
+      itemsRows,
+    );
+  }
+};
+
+/**
+ * Export an invoice as PDF and share it.
+ */
+export const exportInvoicePdf = async (invoice: Invoice) => {
+  const html = await getInvoiceHtml(invoice);
+  const fileName = `فاتورة-${invoice.id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  await exportPdf(html, fileName);
+};
+
+// ------------------------------------------------------------------
+// FINANCIAL REPORT (unchanged)
+// ------------------------------------------------------------------
 
 export const getFinancialReportHtml = async (
   project: Project,
@@ -62,7 +186,6 @@ export const getFinancialReportHtml = async (
     .filter((t) => t.projectId === project.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // compute totals per category
   const categoryTotals: Record<string, number> = {
     INCOME: 0,
     EXPENSE: 0,
@@ -113,7 +236,6 @@ export const getFinancialReportHtml = async (
     }
   };
 
-  // helper to generate category table rows
   const categoryRows = Object.entries(categoryTotals)
     .map(
       ([type, amount]) => `
@@ -152,7 +274,6 @@ export const getFinancialReportHtml = async (
             text-align: right; 
           }
           
-          /* Modern Header Layout */
           .header-container {
             display: flex;
             justify-content: space-between;
@@ -188,7 +309,6 @@ export const getFinancialReportHtml = async (
             margin-left: 10px;
           }
 
-          /* Professional Balance & Summary Box */
           .summary-box { 
             background: linear-gradient(145deg, #ffffff, #f8fafc);
             padding: 20px; 
@@ -229,7 +349,6 @@ export const getFinancialReportHtml = async (
           .cash { color: #059669; }
           .bank { color: #2563eb; }
 
-          /* Category summary table styles */
           .category-summary {
             margin-top: 20px;
             padding-top: 15px;
@@ -261,7 +380,6 @@ export const getFinancialReportHtml = async (
             border-top: 2px solid #1e293b;
           }
 
-          /* Transaction Table Styles */
           h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
           table.transactions { width: 100%; border-collapse: collapse; table-layout: fixed; }
           table.transactions th, table.transactions td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
@@ -281,15 +399,12 @@ export const getFinancialReportHtml = async (
           .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
           .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
 
-          /* NEW: force transaction section to start on a new page */
           .transactions-section {
             page-break-before: always;
           }
         </style>
       </head>
       <body>
-        
-        <!-- Header section -->
         <div class="header-container">
           <img src="${logoUri}" class="logo" alt="App Logo" />
           <div class="header-info">
@@ -301,11 +416,9 @@ export const getFinancialReportHtml = async (
           </div>
         </div>
         
-        <!-- Summary Box (Balances + Category Summary) – stays on page 1 -->
         <div class="summary-box">
           <h2 class="summary-title">ملخص الأرصدة والمعاملات</h2>
           
-          <!-- Balance cards -->
           <div class="balance-grid">
             <div class="balance-card">
               <span class="balance-label">النقد الفعلي المتاح</span>
@@ -317,7 +430,6 @@ export const getFinancialReportHtml = async (
             </div>
           </div>
 
-          <!-- Category Summary Table -->
           <div class="category-summary">
             <h3>ملخص المعاملات حسب الفئة</h3>
             <table>
@@ -329,12 +441,10 @@ export const getFinancialReportHtml = async (
               </thead>
               <tbody>
                 ${categoryRows}
-                <!-- Total income row -->
                 <tr class="total-row">
                   <td style="text-align:right;">إجمالي الإيرادات</td>
                   <td style="text-align:left; color:#10b981;">${formatCurrency(totalIncome)}</td>
                 </tr>
-                <!-- Total expenses row -->
                 <tr class="total-row">
                   <td style="text-align:right;">إجمالي المصروفات (غير الدخل)</td>
                   <td style="text-align:left; color:#ef4444;">${formatCurrency(totalExpenses)}</td>
@@ -344,7 +454,6 @@ export const getFinancialReportHtml = async (
           </div>
         </div>
 
-        <!-- Transaction list – forced to a new page -->
         <div class="transactions-section">
           <h2>سجل المعاملات (${projectTransactions.length})</h2>
           <table class="transactions">
@@ -385,11 +494,8 @@ export const exportPdf = async (
 ) => {
   try {
     const { uri } = await Print.printToFileAsync({ html });
-
-    // Sanitize the filename to prevent iOS/Android crashing on illegal characters
     const safeFileName = customFileName.replace(/[:/\\?%*|"<>]/g, "-");
 
-    // Dynamically extract the writable directory provided by expo-print
     const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
     const newUri = `${targetDirectory}${safeFileName}`;
 
@@ -422,7 +528,6 @@ export const generateFinancialReport = async (
     const rawFileName = `التقرير المالي مشروع ${project.name}-${dateStr}.pdf`;
     const safeFileName = rawFileName.replace(/[:/\\?%*|"<>]/g, "-");
 
-    // Dynamically extract the writable directory provided by expo-print
     const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
     const newUri = `${targetDirectory}${safeFileName}`;
 

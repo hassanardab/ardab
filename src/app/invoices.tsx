@@ -1,4 +1,5 @@
 // src/app/invoices.tsx
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   FlatList,
@@ -12,6 +13,7 @@ import { useStore } from "../store/useStore";
 import { Invoice } from "../types";
 
 export default function InvoicesScreen() {
+  const router = useRouter(); // ✅ added
   const { invoices } = useStore();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -49,12 +51,16 @@ export default function InvoicesScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
+            onPress={() => router.push(`/invoice/${item.id}`)}
             onLongPress={() => openEditInvoice(item)}
             activeOpacity={0.7}
           >
             <Text style={styles.customerName}>{item.customerName}</Text>
             <Text style={styles.companyName}>{item.companyName}</Text>
             <View style={styles.row}>
+              <Text style={styles.typeBadge}>
+                {item.type === "BODY_SHOP" ? "سمكرة" : "قطع غيار"}
+              </Text>
               <Text style={styles.date}>{formatDate(item.date)}</Text>
               <Text style={styles.total}>
                 الإجمالي: {computeTotal(item).toFixed(2)}
@@ -141,5 +147,15 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "300",
     lineHeight: 30,
+  },
+  typeBadge: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#1e40af",
+    backgroundColor: "#dbeafe",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    overflow: "hidden",
   },
 });

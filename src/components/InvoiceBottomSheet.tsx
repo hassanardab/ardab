@@ -1,4 +1,3 @@
-// src/components/InvoiceBottomSheet.tsx
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
@@ -15,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { useStore } from "../store/useStore";
-import { Invoice, InvoiceItem } from "../types";
+import { Invoice, InvoiceItem, InvoiceType } from "../types";
 
 interface Props {
   visible: boolean;
@@ -33,21 +32,24 @@ export default function InvoiceBottomSheet({
 }: Props) {
   const { addInvoice, updateInvoice, deleteInvoice } = useStore();
 
+  const [type, setType] = useState<InvoiceType>("BODY_SHOP");
   const [companyName, setCompanyName] = useState("");
   const [companyLogo, setCompanyLogo] = useState<string | undefined>(undefined);
   const [customerName, setCustomerName] = useState("");
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: generateId(), item: "", description: "", quantity: 1, price: 0 },
   ]);
   const [tax, setTax] = useState(0);
   const [discount, setDiscount] = useState(0);
 
-  // Load data when editing
   useEffect(() => {
     if (visible) {
+      setErrorMessage(null);
       if (invoiceToEdit) {
+        setType(invoiceToEdit.type || "BODY_SHOP");
         setCompanyName(invoiceToEdit.companyName);
         setCompanyLogo(invoiceToEdit.companyLogo);
         setCustomerName(invoiceToEdit.customerName);
@@ -61,7 +63,7 @@ export default function InvoiceBottomSheet({
         setTax(invoiceToEdit.tax);
         setDiscount(invoiceToEdit.discount);
       } else {
-        // Reset for new invoice
+        setType("BODY_SHOP");
         setCompanyName("");
         setCompanyLogo(undefined);
         setCustomerName("");
@@ -87,12 +89,14 @@ export default function InvoiceBottomSheet({
       !customerName.trim() ||
       items.some((i) => !i.item.trim() || i.quantity <= 0 || i.price < 0)
     ) {
-      alert("يرجى ملء جميع الحقول المطلوبة بشكل صحيح");
+      setErrorMessage("يرجى ملء جميع الحقول المطلوبة بشكل صحيح");
       return;
     }
 
+    setErrorMessage(null);
     const invoiceData: Invoice = {
       id: invoiceToEdit?.id || generateId(),
+      type,
       companyName: companyName.trim(),
       companyLogo,
       customerName: customerName.trim(),
@@ -172,46 +176,127 @@ export default function InvoiceBottomSheet({
         style={styles.modalOverlay}
       >
         <View style={styles.modalContent}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          >
+          {/* Sheet Handle */}
+          <View style={styles.sheetHandleContainer}>
+            <View style={styles.sheetHandle} />
+          </View>
+
+          {/* Top Bar */}
+          <View style={styles.headerBar}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Text style={styles.closeBtnText}>✕</Text>
+            </TouchableOpacity>
             <Text style={styles.modalHeader}>
               {invoiceToEdit ? "تعديل الفاتورة" : "إضافة فاتورة جديدة"}
             </Text>
+          </View>
 
-            {/* Company Logo */}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Validation Error Banner */}
+            {errorMessage && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorBannerText}>{errorMessage}</Text>
+              </View>
+            )}
+
+            {/* Type Switcher */}
+            <View style={styles.segmentedControl}>
+              <TouchableOpacity
+                style={[
+                  styles.segmentBtn,
+                  type === "BODY_SHOP" && styles.segmentBtnActive,
+                ]}
+                onPress={() => setType("BODY_SHOP")}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    type === "BODY_SHOP" && styles.segmentTextActive,
+                  ]}
+                >
+                  سمكرة (Body Shop)
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.segmentBtn,
+                  type === "SPARE_PARTS" && styles.segmentBtnActive,
+                ]}
+                onPress={() => setType("SPARE_PARTS")}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    type === "SPARE_PARTS" && styles.segmentTextActive,
+                  ]}
+                >
+                  قطع غيار (Spare Parts)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Company Logo Picker */}
+            <Text style={styles.fieldLabel}>شعار الشركة</Text>
             <TouchableOpacity style={styles.logoPicker} onPress={pickImage}>
               {companyLogo ? (
-                <Image source={{ uri: companyLogo }} style={styles.logoImage} />
+                <View style={styles.logoPreviewContainer}>
+                  <Image
+                    source={{ uri: companyLogo }}
+                    style={styles.logoImage}
+                  />
+                  <Text style={styles.changeLogoText}>تغيير الشعار</Text>
+                </View>
               ) : (
-                <Text style={styles.logoPlaceholder}>رفع شعار الشركة</Text>
+                <View style={styles.logoPlaceholderContainer}>
+                  <Text style={styles.uploadIcon}>📷</Text>
+                  <Text style={styles.logoPlaceholder}>
+                    اضغط لرفع شعار الشركة
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
 
-            <TextInput
-              style={styles.input}
-              placeholder="اسم الشركة"
-              value={companyName}
-              onChangeText={setCompanyName}
-              textAlign="right"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="اسم العميل"
-              value={customerName}
-              onChangeText={setCustomerName}
-              textAlign="right"
-            />
+            {/* Primary Details Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>اسم الشركة</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل اسم الشركة"
+                placeholderTextColor="#9CA3AF"
+                value={companyName}
+                onChangeText={setCompanyName}
+                textAlign="right"
+              />
+            </View>
 
-            <TouchableOpacity
-              style={styles.dateInput}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.dateText}>
-                {date.toISOString().split("T")[0]}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>اسم العميل</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل اسم العميل"
+                placeholderTextColor="#9CA3AF"
+                value={customerName}
+                onChangeText={setCustomerName}
+                textAlign="right"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>تاريخ الفاتورة</Text>
+              <TouchableOpacity
+                style={styles.dateInput}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.dateIcon}>📅</Text>
+                <Text style={styles.dateText}>
+                  {date.toISOString().split("T")[0]}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {showDatePicker && (
               <DateTimePicker
                 value={date}
@@ -221,40 +306,59 @@ export default function InvoiceBottomSheet({
               />
             )}
 
-            <Text style={styles.sectionTitle}>البنود</Text>
+            {/* Items Section */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>بنود الفاتورة</Text>
+              <Text style={styles.itemCountBadge}>{items.length} بنود</Text>
+            </View>
+
             {items.map((item, index) => (
-              <View key={item.id} style={styles.itemRow}>
-                <View style={styles.itemFields}>
-                  <TextInput
-                    style={[styles.input, styles.itemInput]}
-                    placeholder="الصنف"
-                    value={item.item}
-                    onChangeText={(val) => updateItem(item.id, "item", val)}
-                    textAlign="right"
-                  />
-                  <TextInput
-                    style={[styles.input, styles.itemInput]}
-                    placeholder="الوصف (اختياري)"
-                    value={item.description}
-                    onChangeText={(val) =>
-                      updateItem(item.id, "description", val)
-                    }
-                    textAlign="right"
-                  />
-                  <View style={styles.row}>
+              <View key={item.id} style={styles.itemCard}>
+                <View style={styles.itemCardHeader}>
+                  <TouchableOpacity
+                    style={styles.removeItemBtn}
+                    onPress={() => removeItem(item.id)}
+                    disabled={items.length === 1}
+                  >
+                    <Text
+                      style={[
+                        styles.removeItemBtnText,
+                        items.length === 1 && styles.disabledRemoveBtn,
+                      ]}
+                    >
+                      حذف البند
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={styles.itemCardTitle}>بند #{index + 1}</Text>
+                </View>
+
+                <TextInput
+                  style={[styles.input, styles.itemInput]}
+                  placeholder="اسم الصنف / القطعة *"
+                  placeholderTextColor="#9CA3AF"
+                  value={item.item}
+                  onChangeText={(val) => updateItem(item.id, "item", val)}
+                  textAlign="right"
+                />
+
+                <TextInput
+                  style={[styles.input, styles.itemInput]}
+                  placeholder="الوصف التفصيلي (اختياري)"
+                  placeholderTextColor="#9CA3AF"
+                  value={item.description}
+                  onChangeText={(val) =>
+                    updateItem(item.id, "description", val)
+                  }
+                  textAlign="right"
+                />
+
+                <View style={styles.itemNumbersRow}>
+                  <View style={styles.flexInputContainer}>
+                    <Text style={styles.subFieldLabel}>السعر</Text>
                     <TextInput
-                      style={[styles.input, styles.smallInput]}
-                      placeholder="الكمية"
-                      keyboardType="numeric"
-                      value={String(item.quantity)}
-                      onChangeText={(val) =>
-                        updateItem(item.id, "quantity", Number(val) || 0)
-                      }
-                      textAlign="right"
-                    />
-                    <TextInput
-                      style={[styles.input, styles.smallInput]}
-                      placeholder="السعر"
+                      style={styles.input}
+                      placeholder="0.00"
+                      placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
                       value={String(item.price)}
                       onChangeText={(val) =>
@@ -262,77 +366,102 @@ export default function InvoiceBottomSheet({
                       }
                       textAlign="right"
                     />
-                    <TouchableOpacity
-                      style={styles.removeItemBtn}
-                      onPress={() => removeItem(item.id)}
-                    >
-                      <Text style={styles.removeItemBtnText}>×</Text>
-                    </TouchableOpacity>
                   </View>
+
+                  <View style={styles.flexInputContainer}>
+                    <Text style={styles.subFieldLabel}>الكمية</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="1"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="numeric"
+                      value={String(item.quantity)}
+                      onChangeText={(val) =>
+                        updateItem(item.id, "quantity", Number(val) || 0)
+                      }
+                      textAlign="right"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.lineTotalRow}>
+                  <Text style={styles.lineTotalVal}>
+                    {(item.quantity * item.price).toFixed(2)}
+                  </Text>
+                  <Text style={styles.lineTotalLabel}>الإجمالي الجزئي:</Text>
                 </View>
               </View>
             ))}
+
             <TouchableOpacity style={styles.addItemBtn} onPress={addItem}>
-              <Text style={styles.addItemBtnText}>+ إضافة بند</Text>
+              <Text style={styles.addItemBtnText}>+ إضافة بند جديد</Text>
             </TouchableOpacity>
 
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>الضريبة (%)</Text>
-              <TextInput
-                style={[styles.input, styles.totalsInput]}
-                keyboardType="numeric"
-                value={String(tax)}
-                onChangeText={(val) => setTax(Number(val) || 0)}
-                textAlign="right"
-              />
-            </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>الخصم (%)</Text>
-              <TextInput
-                style={[styles.input, styles.totalsInput]}
-                keyboardType="numeric"
-                value={String(discount)}
-                onChangeText={(val) => setDiscount(Number(val) || 0)}
-                textAlign="right"
-              />
+            {/* Calculations & Totals Card */}
+            <View style={styles.calculationCard}>
+              <View style={styles.totalsInputRow}>
+                <View style={styles.totalsInputGroup}>
+                  <Text style={styles.subFieldLabel}>الخصم (%)</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="numeric"
+                    value={String(discount)}
+                    onChangeText={(val) => setDiscount(Number(val) || 0)}
+                    textAlign="center"
+                  />
+                </View>
+
+                <View style={styles.totalsInputGroup}>
+                  <Text style={styles.subFieldLabel}>الضريبة (%)</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="numeric"
+                    value={String(tax)}
+                    onChangeText={(val) => setTax(Number(val) || 0)}
+                    textAlign="center"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryValue}>{subtotal.toFixed(2)}</Text>
+                <Text style={styles.summaryLabel}>المجموع الفرعي</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryValue}>{taxAmount.toFixed(2)}</Text>
+                <Text style={styles.summaryLabel}>قيمة الضريبة</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryValue}>
+                  -{discountAmount.toFixed(2)}
+                </Text>
+                <Text style={styles.summaryLabel}>قيمة الخصم</Text>
+              </View>
+
+              <View style={styles.totalRowContainer}>
+                <Text style={styles.totalValue}>{total.toFixed(2)}</Text>
+                <Text style={styles.totalLabel}>المبلغ الإجمالي</Text>
+              </View>
             </View>
 
-            <View style={styles.summary}>
-              <Text style={styles.summaryText}>
-                المجموع الفرعي: {subtotal.toFixed(2)}
-              </Text>
-              <Text style={styles.summaryText}>
-                الضريبة: {taxAmount.toFixed(2)}
-              </Text>
-              <Text style={styles.summaryText}>
-                الخصم: {discountAmount.toFixed(2)}
-              </Text>
-              <Text style={[styles.summaryText, styles.totalText]}>
-                الإجمالي: {total.toFixed(2)}
-              </Text>
-            </View>
+            {/* Action Buttons */}
+            <View style={styles.actionContainer}>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                <Text style={styles.saveBtnText}>
+                  {invoiceToEdit ? "حفظ التعديلات" : "إنشاء الفاتورة"}
+                </Text>
+              </TouchableOpacity>
 
-            <View style={[styles.row, { marginTop: 16 }]}>
               {invoiceToEdit && (
                 <TouchableOpacity
-                  style={[styles.modalBtn, styles.deleteBtn]}
+                  style={styles.deleteBtn}
                   onPress={handleDelete}
                 >
-                  <Text style={styles.deleteBtnText}>حذف</Text>
+                  <Text style={styles.deleteBtnText}>حذف الفاتورة</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.saveBtn]}
-                onPress={handleSave}
-              >
-                <Text style={styles.saveBtnText}>حفظ</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.cancelBtn]}
-                onPress={onClose}
-              >
-                <Text style={styles.cancelBtnText}>إلغاء</Text>
-              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
@@ -344,169 +473,370 @@ export default function InvoiceBottomSheet({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "white",
-    padding: 24,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "90%",
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: "92%",
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === "ios" ? 28 : 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  sheetHandleContainer: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#E2E8F0",
+  },
+  headerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   modalHeader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
     textAlign: "right",
   },
-  logoPicker: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    padding: 16,
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
-    backgroundColor: "#fafafa",
+  },
+  closeBtnText: {
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "bold",
+  },
+  scrollContent: {
+    paddingVertical: 16,
+  },
+  errorBanner: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorBannerText: {
+    color: "#DC2626",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  segmentedControl: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 18,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  segmentBtnActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  segmentTextActive: {
+    color: "#0F172A",
+    fontWeight: "700",
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
+    marginBottom: 6,
+    textAlign: "right",
+  },
+  subFieldLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#64748B",
+    marginBottom: 4,
+    textAlign: "right",
+  },
+  inputGroup: {
+    marginBottom: 14,
+  },
+  input: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#0F172A",
+  },
+  logoPicker: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    marginBottom: 16,
+  },
+  logoPlaceholderContainer: {
+    alignItems: "center",
+  },
+  uploadIcon: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  logoPlaceholder: {
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  logoPreviewContainer: {
+    alignItems: "center",
   },
   logoImage: {
-    width: 100,
-    height: 100,
+    width: 90,
+    height: 60,
     borderRadius: 8,
     resizeMode: "contain",
   },
-  logoPlaceholder: {
-    color: "#6b7280",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    textAlign: "right",
-    backgroundColor: "#fafafa",
+  changeLogoText: {
+    fontSize: 12,
+    color: "#2563EB",
+    fontWeight: "600",
+    marginTop: 6,
   },
   dateInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    backgroundColor: "#fafafa",
-    justifyContent: "center",
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dateIcon: {
+    fontSize: 16,
   },
   dateText: {
-    textAlign: "right",
-    color: "#111827",
+    color: "#0F172A",
     fontSize: 14,
+    fontWeight: "500",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginVertical: 8,
-    textAlign: "right",
+    fontWeight: "700",
+    color: "#0F172A",
   },
-  itemRow: {
+  itemCountBadge: {
+    backgroundColor: "#E2E8F0",
+    color: "#475569",
+    fontSize: 12,
+    fontWeight: "600",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  itemCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  itemFields: {
-    backgroundColor: "#f9fafb",
-    padding: 8,
-    borderRadius: 8,
-  },
-  itemInput: {
-    marginBottom: 4,
-  },
-  row: {
+  itemCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
-  smallInput: {
-    flex: 1,
-    marginRight: 4,
+  itemCardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
   },
   removeItemBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#fee2e2",
-    justifyContent: "center",
-    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   removeItemBtnText: {
-    color: "#dc2626",
-    fontSize: 18,
-    fontWeight: "bold",
+    color: "#EF4444",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  disabledRemoveBtn: {
+    color: "#CBD5E1",
+  },
+  itemInput: {
+    marginBottom: 10,
+  },
+  itemNumbersRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  flexInputContainer: {
+    flex: 1,
+  },
+  lineTotalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  lineTotalLabel: {
+    fontSize: 12,
+    color: "#64748B",
+    marginLeft: 4,
+  },
+  lineTotalVal: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
   },
   addItemBtn: {
-    backgroundColor: "#f3f4f6",
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderStyle: "dashed",
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: "center",
-    marginVertical: 8,
+    marginVertical: 4,
+    marginBottom: 18,
   },
   addItemBtnText: {
-    color: "#374151",
-    fontWeight: "500",
+    color: "#1E293B",
+    fontWeight: "600",
+    fontSize: 14,
   },
-  totalsRow: {
+  calculationCard: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
+  totalsInputRow: {
     flexDirection: "row",
-    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  totalsInputGroup: {
+    flex: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E2E8F0",
+    marginVertical: 10,
+  },
+  summaryRow: {
+    flexDirection: "row",
     justifyContent: "space-between",
     marginVertical: 4,
   },
-  totalsLabel: {
-    fontSize: 14,
-    color: "#4b5563",
-    marginRight: 8,
+  summaryLabel: {
+    fontSize: 13,
+    color: "#64748B",
   },
-  totalsInput: {
-    width: 80,
-    textAlign: "right",
-  },
-  summary: {
-    backgroundColor: "#f3f4f6",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  summaryText: {
-    fontSize: 14,
-    textAlign: "right",
-    marginVertical: 2,
-  },
-  totalText: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  modalBtn: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
-  cancelBtn: {
-    backgroundColor: "#f3f4f6",
-  },
-  cancelBtnText: {
-    color: "#374151",
+  summaryValue: {
+    fontSize: 13,
+    color: "#1E293B",
     fontWeight: "600",
+  },
+  totalRowContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#0F172A",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#38BDF8",
+  },
+  actionContainer: {
+    gap: 10,
   },
   saveBtn: {
-    backgroundColor: "#111827",
+    backgroundColor: "#0F172A",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
   },
   saveBtnText: {
-    color: "white",
-    fontWeight: "600",
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
   deleteBtn: {
-    backgroundColor: "#dc2626",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
   },
   deleteBtnText: {
-    color: "white",
+    color: "#EF4444",
+    fontSize: 14,
     fontWeight: "600",
   },
 });

@@ -1,4 +1,5 @@
-//src/types/index.ts
+// src/types/index.ts
+
 export type PaymentMethod = "CASH" | "BANK";
 export type TransactionType =
   | "INCOME"
@@ -10,11 +11,15 @@ export type TransactionType =
   | "BANK_FEE"
   | "TRANSFER";
 
+// NEW: invoice type
+export type InvoiceType = "BODY_SHOP" | "SPARE_PARTS";
+
 export interface Employee {
   id: string;
   name: string;
   role: string;
 }
+
 export interface Vendor {
   id: string;
   name: string;
@@ -29,8 +34,8 @@ export interface Transaction {
   amount: number;
   description: string;
   date: string;
-  employeeId?: string; // If payroll
-  vendorId?: string; // If bill/expense
+  employeeId?: string;
+  vendorId?: string;
 }
 
 export interface Project {
@@ -42,6 +47,7 @@ export interface Project {
   currentBank: number;
   createdAt: string;
 }
+
 export interface InvoiceItem {
   id: string;
   item: string;
@@ -52,11 +58,12 @@ export interface InvoiceItem {
 
 export interface Invoice {
   id: string;
+  type: InvoiceType; // NEW
   companyName: string;
-  companyLogo?: string; // base64 or local URI
+  companyLogo?: string;
   customerName: string;
-  date: string; // ISO date
+  date: string;
   items: InvoiceItem[];
-  tax: number; // percentage, e.g. 15 for 15%
-  discount: number; // percentage, e.g. 10 for 10%
+  tax: number;
+  discount: number;
 }

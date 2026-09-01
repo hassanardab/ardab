@@ -1,6 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useColorScheme } from "react-native";
+// ... existing imports ...
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -51,25 +52,18 @@ export default function TabLayout() {
         name="invoices"
         options={{
           title: "الفواتير",
+          headerTitleAlign: "center",
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="receipt" size={24} color={color} />
           ),
         }}
       />
 
-      {/* Hide the specific nested project routes from the tab bar */}
-      <Tabs.Screen
-        name="project/[id]"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="project/[id]/report"
-        options={{
-          href: null,
-        }}
-      />
+      {/* Hide nested routes */}
+      <Tabs.Screen name="project/[id]" options={{ href: null }} />
+      <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
+      {/* NEW: hide invoice detail */}
+      <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
