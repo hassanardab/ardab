@@ -78,12 +78,14 @@ adb reverse tcp:8081 tcp:8081
 ## v2.5
 
 [x] we can edit the project when hold
-[_] we have an invoice form
-[_] pdf invoice
+[x] we have an invoice form
+[x] pdf invoice
 [_] we have loans on form
 [_] we have loans on pdf
-[_] on hold we can delete from the edit form
+[x] on hold we can delete from the edit form
 
 ## v2.6
 
 [x] the invoice has two types body shop and spare parts this should be on the invoice type and each should have it on pdf html design this current html should be for the body shop, so on the PDF service make it changes based on the invoce type.
+
+[] ONA the main dashboard we have the day and date

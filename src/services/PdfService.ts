@@ -1,4 +1,4 @@
-import { formatCurrency } from "@/utils/format";
+import { formatCurrency, formatCurrencyPdf } from "@/utils/format";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
@@ -77,7 +77,7 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   const discountAmount = (subtotal * invoice.discount) / 100;
   const total = subtotal + taxAmount - discountAmount;
 
-  const formatMoney = (value: number) => formatCurrency(value);
+  const formatMoney = (value: number) => formatCurrencyPdf(value);
   const dateStr = new Date(invoice.date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "2-digit",

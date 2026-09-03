@@ -55,11 +55,21 @@ export default function DashboardScreen() {
     setSelectedProjectId(projectId);
     setIsModalVisible(true);
   };
+  // Format today's date in Arabic (e.g., "الخميس، ٣ سبتمبر")
+  const formattedDate = new Intl.DateTimeFormat("ar-EG", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Top Header Bar with Date */}
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>المشاريع النشطة</Text>
+        <View style={styles.headerTextGroup}>
+          <Text style={styles.dateText}>{formattedDate}</Text>
+          <Text style={styles.header}>المشاريع النشطة</Text>
+        </View>
         <Image
           source={require("@/assets/images/icon.png")}
           style={styles.logo}
@@ -305,4 +315,13 @@ const styles = StyleSheet.create({
   cancelBtnText: { color: "#374151", fontWeight: "600" },
   saveBtn: { backgroundColor: "#111827" },
   saveBtnText: { color: "white", fontWeight: "600" },
+  headerTextGroup: {
+    alignItems: "flex-end",
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 2,
+  },
 });

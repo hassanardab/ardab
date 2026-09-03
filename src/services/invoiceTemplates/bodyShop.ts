@@ -1,3 +1,4 @@
+//src/services/invoiceTemplates/bodyShop.ts
 /**
  * Body Shop invoice HTML template.
  * Professional estimate‑style layout.

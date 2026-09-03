@@ -5,6 +5,15 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+export const formatCurrencyPdf = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
+
 export const formatNumberInput = (value: string): string => {
   // Keep digits only
   const digits = value.replace(/[^\d]/g, "");
