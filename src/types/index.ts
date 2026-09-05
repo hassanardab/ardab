@@ -58,12 +58,35 @@ export interface InvoiceItem {
 
 export interface Invoice {
   id: string;
-  type: InvoiceType; // NEW
+  type: InvoiceType;
   companyName: string;
   companyLogo?: string;
   customerName: string;
   date: string;
+  phoneNumber: string;
+  address: string;
   items: InvoiceItem[];
   tax: number;
   discount: number;
+}
+// src/types/index.ts
+
+export interface Conversation {
+  id: string;
+  participants: string[];
+  lastMessage?: {
+    text: string;
+    timestamp: Date | string;
+    senderId: string;
+  };
+  updatedAt: Date | string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  text: string;
+  timestamp: Date | string;
+  status: "sent" | "delivered" | "read";
 }

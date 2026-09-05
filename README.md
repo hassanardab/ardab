@@ -25,6 +25,10 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## get the full code:
+
+rm -f codebase.txt && (tree -I '.expo|android|ios|documents|.git|assets|.idea|node*modules|dist|build|package-lock.json|tree.txt|codebase.txt'; find . -type d \( -name .expo -o -name android -o -name ios -o -name assets -o -name documents -o -name .git -o -name node_modules -o -name .idea -o -name dist -o -name build \) -prune -o -type f ! -name "tree.txt" ! -name "codebase.txt" ! -name "package-lock.json" ! -name "*.png" ! -name "_.jpg" ! -name "_.svg" ! -name "\_.ttf" ! -name "\*.log" -print | while read -r file; do echo -e "\n=== $file ==="; cat "$file"; done) > codebase.txt
+
 ## Get a fresh project
 
 When you're ready, run:
@@ -86,6 +90,11 @@ adb reverse tcp:8081 tcp:8081
 
 ## v2.6
 
+[] we can see the phone top bar
+[] nas new request for invoice
 [x] the invoice has two types body shop and spare parts this should be on the invoice type and each should have it on pdf html design this current html should be for the body shop, so on the PDF service make it changes based on the invoce type.
 
-[] ONA the main dashboard we have the day and date
+[x] ONA the main dashboard we have the day and date
+[x] add the messaging feature UI
+
+## v2.7

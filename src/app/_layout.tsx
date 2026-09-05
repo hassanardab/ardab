@@ -49,6 +49,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="messages"
+        options={{
+          title: "الرسائل",
+          headerShown: true,
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="chat" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="invoices"
         options={{
           title: "الفواتير",
@@ -58,12 +68,12 @@ export default function TabLayout() {
           ),
         }}
       />
-
       {/* Hide nested routes */}
       <Tabs.Screen name="project/[id]" options={{ href: null }} />
       <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
       {/* NEW: hide invoice detail */}
       <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
+      <Tabs.Screen name="messages/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -116,9 +116,16 @@ export const getSparePartsInvoiceHtml = (
             padding: 8px 10px;
             font-size: 11px;
             font-weight: bold;
-            line-height: 1.4;
+            line-height: 1.6;
             min-height: 55px;
             text-transform: uppercase;
+          }
+
+          .address-content .customer-detail {
+            font-weight: normal;
+            font-size: 10px;
+            color: #333;
+            text-transform: none;
           }
 
           /* =========================================
@@ -165,6 +172,12 @@ export const getSparePartsInvoiceHtml = (
             font-size: 11px;
             font-weight: bold;
             min-height: 20px;
+          }
+
+          .meta-value .contact-info {
+            font-weight: normal;
+            font-size: 9px;
+            color: #333;
           }
 
           /* =========================================
@@ -361,7 +374,9 @@ export const getSparePartsInvoiceHtml = (
               <span>SHIPPED TO</span>
             </div>
             <div class="address-content">
-              ${escapeHtml(invoice.customerName)}
+              ${escapeHtml(invoice.customerName)}<br />
+              <span class="customer-detail">📞 ${escapeHtml(invoice.phoneNumber || "")}</span><br />
+              <span class="customer-detail">📍 ${escapeHtml(invoice.address || "")}</span>
             </div>
           </div>
 
@@ -376,19 +391,29 @@ export const getSparePartsInvoiceHtml = (
           <!-- Invoice Primary Meta -->
           <table class="meta-table">
             <tr>
-              <td style="width: 25%;">
-                <div class="meta-label">YOUR PURCHASE ORDER</div>
-                <div class="meta-value">${escapeHtml(invoice.id)}</div>
+              <td style="width: 20%;">
+                <div class="meta-label">CUSTOMER</div>
+                <div class="meta-value" style="font-size: 10px; font-weight: bold;">
+                  ${escapeHtml(invoice.customerName)}
+                  <div class="contact-info">📞 ${escapeHtml(invoice.phoneNumber || "")}</div>
+                  <div class="contact-info">📍 ${escapeHtml(invoice.address || "")}</div>
+                </div>
               </td>
-              <td style="width: 35%;">
+              <td style="width: 20%;">
+                <div class="meta-label">PHONE</div>
+                <div class="meta-value" style="font-size: 10px;">
+                  ${escapeHtml(invoice.phoneNumber || "")}
+                </div>
+              </td>
+              <td style="width: 25%;">
                 <div class="meta-label">TERMS</div>
                 <div class="meta-value">Payment Due Upon Receipt.</div>
               </td>
-              <td style="width: 20%;">
+              <td style="width: 17%;">
                 <div class="meta-label">INVOICE DATE</div>
                 <div class="meta-value">${dateStr}</div>
               </td>
-              <td style="width: 20%;">
+              <td style="width: 18%;">
                 <div class="meta-label">INVOICE NUMBER / PG.</div>
                 <div class="meta-value">${escapeHtml(invoice.id)} &nbsp;1</div>
               </td>

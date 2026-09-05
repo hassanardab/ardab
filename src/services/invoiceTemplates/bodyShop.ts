@@ -63,6 +63,15 @@ export const getBodyShopInvoiceHtml = (
             text-transform: uppercase;
             margin-bottom: 5px;
           }
+          .customer-contact {
+            font-size: 10px;
+            color: #555555;
+            line-height: 1.6;
+            margin-top: 4px;
+          }
+          .customer-contact .contact-icon {
+            margin-right: 4px;
+          }
           .company-logo {
             max-width: 65px;
             max-height: 65px;
@@ -293,6 +302,10 @@ export const getBodyShopInvoiceHtml = (
             <div class="header-left">
               <div class="small-label">Customer</div>
               <div class="customer-name">${escapeHtml(invoice.customerName)}</div>
+              <div class="customer-contact">
+                <div>📞 ${escapeHtml(invoice.phoneNumber || "")}</div>
+                <div>📍 ${escapeHtml(invoice.address || "")}</div>
+              </div>
             </div>
             <div class="header-center">
               ${logoDataUri ? `<img src="${logoDataUri}" class="company-logo" alt="Company Logo" />` : ""}
@@ -315,6 +328,14 @@ export const getBodyShopInvoiceHtml = (
               <div class="info-row">
                 <div class="info-label">Customer Name</div>
                 <div class="info-value">${escapeHtml(invoice.customerName)}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">${escapeHtml(invoice.phoneNumber || "")}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Address</div>
+                <div class="info-value">${escapeHtml(invoice.address || "")}</div>
               </div>
               <div class="info-row">
                 <div class="info-label">Invoice Date</div>

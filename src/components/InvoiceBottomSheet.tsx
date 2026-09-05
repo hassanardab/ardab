@@ -39,6 +39,8 @@ export default function InvoiceBottomSheet({
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [address, setAddress] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: generateId(), item: "", description: "", quantity: 1, price: 0 },
   ]);
@@ -53,6 +55,8 @@ export default function InvoiceBottomSheet({
         setCompanyName(invoiceToEdit.companyName);
         setCompanyLogo(invoiceToEdit.companyLogo);
         setCustomerName(invoiceToEdit.customerName);
+        setPhoneNumber(invoiceToEdit.phoneNumber || "");
+        setAddress(invoiceToEdit.address || "");
         setDate(new Date(invoiceToEdit.date));
         setItems(
           invoiceToEdit.items.map((item) => ({
@@ -68,6 +72,8 @@ export default function InvoiceBottomSheet({
         setCompanyLogo(undefined);
         setCustomerName("");
         setDate(new Date());
+        setPhoneNumber(""); // NEW
+        setAddress(""); // NEW
         setItems([
           {
             id: generateId(),
@@ -87,6 +93,8 @@ export default function InvoiceBottomSheet({
     if (
       !companyName.trim() ||
       !customerName.trim() ||
+      !phoneNumber.trim() || // NEW
+      !address.trim() || // NEW
       items.some((i) => !i.item.trim() || i.quantity <= 0 || i.price < 0)
     ) {
       setErrorMessage("يرجى ملء جميع الحقول المطلوبة بشكل صحيح");
@@ -100,6 +108,8 @@ export default function InvoiceBottomSheet({
       companyName: companyName.trim(),
       companyLogo,
       customerName: customerName.trim(),
+      phoneNumber: phoneNumber.trim(),
+      address: address.trim(),
       date: date.toISOString(),
       items: items.map((item) => ({
         ...item,
@@ -283,7 +293,32 @@ export default function InvoiceBottomSheet({
                 textAlign="right"
               />
             </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>رقم الهاتف *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل رقم الهاتف"
+                placeholderTextColor="#9CA3AF"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                textAlign="right"
+                keyboardType="phone-pad"
+              />
+            </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>العنوان *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="أدخل العنوان"
+                placeholderTextColor="#9CA3AF"
+                value={address}
+                onChangeText={setAddress}
+                textAlign="right"
+                multiline
+                numberOfLines={2}
+              />
+            </View>
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>تاريخ الفاتورة</Text>
               <TouchableOpacity
@@ -838,5 +873,11 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     fontSize: 14,
     fontWeight: "600",
+  },
+  // In the styles object
+  textArea: {
+    minHeight: 60,
+    textAlignVertical: "top",
+    paddingTop: 12,
   },
 });

@@ -1,9 +1,18 @@
+// src/store/useStore.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { Employee, Invoice, Project, Transaction } from "../types";
+import {
+  Conversation,
+  Employee,
+  Invoice,
+  Message,
+  Project,
+  Transaction,
+} from "../types";
 
 interface AppState {
+  // ----- Existing state -----
   projects: Project[];
   transactions: Transaction[];
   employees: Employee[];
@@ -20,15 +29,60 @@ interface AppState {
   addInvoice: (invoice: Invoice) => void;
   updateInvoice: (id: string, updates: Partial<Omit<Invoice, "id">>) => void;
   deleteInvoice: (id: string) => void;
-}
 
+  // ----- NEW: Messaging state -----
+  conversations: Conversation[];
+  messages: Record<string, Message[]>;
+  setConversations: (convs: Conversation[]) => void;
+  addConversation: (conv: Conversation) => void;
+  setMessages: (conversationId: string, msgs: Message[]) => void;
+  addMessage: (conversationId: string, msg: Message) => void;
+}
+const INITIAL_CONV_ID = "conv1";
+
+const defaultConversations: Conversation[] = [
+  {
+    id: INITIAL_CONV_ID,
+    participants: ["user1", "user2"],
+    lastMessage: {
+      text: "Hey, check out the new design system update!",
+      timestamp: new Date(),
+      senderId: "user2",
+    },
+    updatedAt: new Date(),
+  },
+];
+
+const defaultMessages: Record<string, Message[]> = {
+  [INITIAL_CONV_ID]: [
+    {
+      id: "m1",
+      conversationId: INITIAL_CONV_ID,
+      senderId: "user2",
+      text: "Hey, check out the new design system update!",
+      timestamp: new Date(Date.now() - 60000),
+      status: "read",
+    },
+    {
+      id: "m2",
+      conversationId: INITIAL_CONV_ID,
+      senderId: "user1",
+      text: "Looks clean! The inverted flatlist behavior works smoothly now.",
+      timestamp: new Date(Date.now() - 30000),
+      status: "delivered",
+    },
+  ],
+};
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
+      // ----- Existing initial state -----
       projects: [],
       transactions: [],
       employees: [],
       invoices: [],
+
+      // ----- Existing actions -----
       addInvoice: (invoice) =>
         set((state) => ({
           invoices: [...state.invoices, invoice],
@@ -54,7 +108,6 @@ export const useStore = create<AppState>()(
             },
           ],
         })),
-
       addEmployee: (employee) =>
         set((state) => ({
           employees: [...state.employees, employee],
@@ -65,7 +118,6 @@ export const useStore = create<AppState>()(
             p.id === id ? { ...p, ...updates } : p,
           ),
         })),
-
       addTransaction: (transaction) =>
         set((state) => {
           const updatedProjects = state.projects.map((proj) => {
@@ -82,7 +134,6 @@ export const useStore = create<AppState>()(
                     (isToBank ? -transaction.amount : transaction.amount),
                 };
               }
-
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? -transaction.amount
@@ -106,7 +157,6 @@ export const useStore = create<AppState>()(
             projects: updatedProjects,
           };
         }),
-
       updateTransaction: (updatedTransaction) =>
         set((state) => {
           const oldTransaction = state.transactions.find(
@@ -193,7 +243,6 @@ export const useStore = create<AppState>()(
             projects: finalProjects,
           };
         }),
-
       removeTransaction: (transactionId) =>
         set((state) => {
           const transaction = state.transactions.find(
@@ -215,7 +264,6 @@ export const useStore = create<AppState>()(
                     (isToBank ? -transaction.amount : transaction.amount),
                 };
               }
-
               const isDeduction = transaction.type !== "INCOME";
               const amountChange = isDeduction
                 ? transaction.amount
@@ -242,7 +290,53 @@ export const useStore = create<AppState>()(
             projects: updatedProjects,
           };
         }),
+
+      // ----- NEW: Messaging state & actions -----
+      conversations: defaultConversations,
+      messages: defaultMessages,
+
+      setConversations: (convs) => set({ conversations: convs }),
+      addConversation: (conv) =>
+        set((state) => ({ conversations: [conv, ...state.conversations] })),
+      setMessages: (conversationId, msgs) =>
+        set((state) => ({
+          messages: { ...state.messages, [conversationId]: msgs },
+        })),
+
+      addMessage: (conversationId, msg) =>
+        set((state) => {
+          const currentMsgs = state.messages[conversationId] || [];
+          // Prepend to array because FlatList is inverted (index 0 is bottom)
+          const updatedMsgs = [msg, ...currentMsgs];
+
+          // Update parent conversation's metadata
+          const updatedConversations = state.conversations.map((conv) => {
+            if (conv.id === conversationId) {
+              return {
+                ...conv,
+                lastMessage: {
+                  text: msg.text,
+                  timestamp: msg.timestamp,
+                  senderId: msg.senderId,
+                },
+                updatedAt: msg.timestamp,
+              };
+            }
+            return conv;
+          });
+
+          return {
+            messages: {
+              ...state.messages,
+              [conversationId]: updatedMsgs,
+            },
+            conversations: updatedConversations,
+          };
+        }),
     }),
-    { name: "finance-storage", storage: createJSONStorage(() => AsyncStorage) },
+    {
+      name: "finance-storage",
+      storage: createJSONStorage(() => AsyncStorage),
+    },
   ),
 );
