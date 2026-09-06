@@ -52,7 +52,6 @@ export default function AddTransactionBottomSheet({
         setTxType("EXPENSE");
         setTxMethod("BANK");
       }
-      // Focus the amount input after the modal is fully rendered
       setTimeout(() => {
         amountInputRef.current?.focus();
       }, 300);
@@ -117,6 +116,8 @@ export default function AddTransactionBottomSheet({
               "ABDU",
               "PAYROLL",
               "BILL",
+              "LOAN_GIVEN",
+              "LOAN_RECEIVED",
               "TRANSPORTATION",
               "TRANSFER",
               "BANK_FEE",
@@ -146,7 +147,11 @@ export default function AddTransactionBottomSheet({
                               ? "مواصلات وترحيل"
                               : type === "BILL"
                                 ? "فاتورة"
-                                : "تحويل"}
+                                : type === "LOAN_GIVEN"
+                                  ? "قرض مُعطى"
+                                  : type === "LOAN_RECEIVED"
+                                    ? "قرض مأخوذ"
+                                    : "تحويل"}
                 </Text>
               </TouchableOpacity>
             ))}

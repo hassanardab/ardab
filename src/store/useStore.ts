@@ -12,7 +12,6 @@ import {
 } from "../types";
 
 interface AppState {
-  // ----- Existing state -----
   projects: Project[];
   transactions: Transaction[];
   employees: Employee[];
@@ -30,7 +29,6 @@ interface AppState {
   updateInvoice: (id: string, updates: Partial<Omit<Invoice, "id">>) => void;
   deleteInvoice: (id: string) => void;
 
-  // ----- NEW: Messaging state -----
   conversations: Conversation[];
   messages: Record<string, Message[]>;
   setConversations: (convs: Conversation[]) => void;
@@ -38,6 +36,7 @@ interface AppState {
   setMessages: (conversationId: string, msgs: Message[]) => void;
   addMessage: (conversationId: string, msg: Message) => void;
 }
+
 const INITIAL_CONV_ID = "conv1";
 
 const defaultConversations: Conversation[] = [
@@ -73,16 +72,46 @@ const defaultMessages: Record<string, Message[]> = {
     },
   ],
 };
+
+// ----- HELPER: determines if a transaction is an inflow (increases balance) -----
+const isInflow = (type: string): boolean => {
+  return type === "INCOME" || type === "LOAN_RECEIVED";
+};
+
+// ----- HELPER: applies a transaction effect to a project's balances -----
+const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
+  const multiplier = sign; // +1 for add, -1 for remove/reverse
+  const amount = tx.amount * multiplier;
+
+  if (tx.type === "TRANSFER") {
+    const isToBank = tx.method === "BANK";
+    return {
+      ...project,
+      currentBank: project.currentBank + (isToBank ? amount : -amount),
+      currentCash: project.currentCash + (isToBank ? -amount : amount),
+    };
+  }
+
+  const inflow = isInflow(tx.type);
+  const delta = inflow ? amount : -amount;
+
+  return {
+    ...project,
+    currentCash:
+      tx.method === "CASH" ? project.currentCash + delta : project.currentCash,
+    currentBank:
+      tx.method === "BANK" ? project.currentBank + delta : project.currentBank,
+  };
+};
+
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
-      // ----- Existing initial state -----
       projects: [],
       transactions: [],
       employees: [],
       invoices: [],
 
-      // ----- Existing actions -----
       addInvoice: (invoice) =>
         set((state) => ({
           invoices: [...state.invoices, invoice],
@@ -97,6 +126,7 @@ export const useStore = create<AppState>()(
         set((state) => ({
           invoices: state.invoices.filter((inv) => inv.id !== id),
         })),
+
       addProject: (projectData) =>
         set((state) => ({
           projects: [
@@ -108,55 +138,32 @@ export const useStore = create<AppState>()(
             },
           ],
         })),
+
       addEmployee: (employee) =>
         set((state) => ({
           employees: [...state.employees, employee],
         })),
+
       updateProject: (id, updates) =>
         set((state) => ({
           projects: state.projects.map((p) =>
             p.id === id ? { ...p, ...updates } : p,
           ),
         })),
+
       addTransaction: (transaction) =>
         set((state) => {
-          const updatedProjects = state.projects.map((proj) => {
-            if (proj.id === transaction.projectId) {
-              if (transaction.type === "TRANSFER") {
-                const isToBank = transaction.method === "BANK";
-                return {
-                  ...proj,
-                  currentBank:
-                    proj.currentBank +
-                    (isToBank ? transaction.amount : -transaction.amount),
-                  currentCash:
-                    proj.currentCash +
-                    (isToBank ? -transaction.amount : transaction.amount),
-                };
-              }
-              const isDeduction = transaction.type !== "INCOME";
-              const amountChange = isDeduction
-                ? -transaction.amount
-                : transaction.amount;
-              return {
-                ...proj,
-                currentCash:
-                  transaction.method === "CASH"
-                    ? proj.currentCash + amountChange
-                    : proj.currentCash,
-                currentBank:
-                  transaction.method === "BANK"
-                    ? proj.currentBank + amountChange
-                    : proj.currentBank,
-              };
-            }
-            return proj;
-          });
+          const updatedProjects = state.projects.map((proj) =>
+            proj.id === transaction.projectId
+              ? applyTransaction(proj, transaction, 1)
+              : proj,
+          );
           return {
             transactions: [...state.transactions, transaction],
             projects: updatedProjects,
           };
         }),
+
       updateTransaction: (updatedTransaction) =>
         set((state) => {
           const oldTransaction = state.transactions.find(
@@ -164,77 +171,19 @@ export const useStore = create<AppState>()(
           );
           if (!oldTransaction) return state;
 
-          // 1. عكس تأثير المعاملة القديمة على الأرصدة
-          const tempProjects = state.projects.map((proj) => {
-            if (proj.id === oldTransaction.projectId) {
-              if (oldTransaction.type === "TRANSFER") {
-                const isToBank = oldTransaction.method === "BANK";
-                return {
-                  ...proj,
-                  currentBank:
-                    proj.currentBank -
-                    (isToBank ? oldTransaction.amount : -oldTransaction.amount),
-                  currentCash:
-                    proj.currentCash -
-                    (isToBank ? -oldTransaction.amount : oldTransaction.amount),
-                };
-              }
-              const isDeduction = oldTransaction.type !== "INCOME";
-              const amountChange = isDeduction
-                ? oldTransaction.amount
-                : -oldTransaction.amount;
-              return {
-                ...proj,
-                currentCash:
-                  oldTransaction.method === "CASH"
-                    ? proj.currentCash + amountChange
-                    : proj.currentCash,
-                currentBank:
-                  oldTransaction.method === "BANK"
-                    ? proj.currentBank + amountChange
-                    : proj.currentBank,
-              };
-            }
-            return proj;
-          });
+          // Reverse old transaction
+          const afterReverse = state.projects.map((proj) =>
+            proj.id === oldTransaction.projectId
+              ? applyTransaction(proj, oldTransaction, -1)
+              : proj,
+          );
 
-          // 2. تطبيق تأثير المعاملة الجديدة على الأرصدة
-          const finalProjects = tempProjects.map((proj) => {
-            if (proj.id === updatedTransaction.projectId) {
-              if (updatedTransaction.type === "TRANSFER") {
-                const isToBank = updatedTransaction.method === "BANK";
-                return {
-                  ...proj,
-                  currentBank:
-                    proj.currentBank +
-                    (isToBank
-                      ? updatedTransaction.amount
-                      : -updatedTransaction.amount),
-                  currentCash:
-                    proj.currentCash +
-                    (isToBank
-                      ? -updatedTransaction.amount
-                      : updatedTransaction.amount),
-                };
-              }
-              const isDeduction = updatedTransaction.type !== "INCOME";
-              const amountChange = isDeduction
-                ? -updatedTransaction.amount
-                : updatedTransaction.amount;
-              return {
-                ...proj,
-                currentCash:
-                  updatedTransaction.method === "CASH"
-                    ? proj.currentCash + amountChange
-                    : proj.currentCash,
-                currentBank:
-                  updatedTransaction.method === "BANK"
-                    ? proj.currentBank + amountChange
-                    : proj.currentBank,
-              };
-            }
-            return proj;
-          });
+          // Apply new transaction
+          const finalProjects = afterReverse.map((proj) =>
+            proj.id === updatedTransaction.projectId
+              ? applyTransaction(proj, updatedTransaction, 1)
+              : proj,
+          );
 
           return {
             transactions: state.transactions.map((t) =>
@@ -243,6 +192,7 @@ export const useStore = create<AppState>()(
             projects: finalProjects,
           };
         }),
+
       removeTransaction: (transactionId) =>
         set((state) => {
           const transaction = state.transactions.find(
@@ -250,38 +200,11 @@ export const useStore = create<AppState>()(
           );
           if (!transaction) return state;
 
-          const updatedProjects = state.projects.map((proj) => {
-            if (proj.id === transaction.projectId) {
-              if (transaction.type === "TRANSFER") {
-                const isToBank = transaction.method === "BANK";
-                return {
-                  ...proj,
-                  currentBank:
-                    proj.currentBank -
-                    (isToBank ? transaction.amount : -transaction.amount),
-                  currentCash:
-                    proj.currentCash -
-                    (isToBank ? -transaction.amount : transaction.amount),
-                };
-              }
-              const isDeduction = transaction.type !== "INCOME";
-              const amountChange = isDeduction
-                ? transaction.amount
-                : -transaction.amount;
-              return {
-                ...proj,
-                currentCash:
-                  transaction.method === "CASH"
-                    ? proj.currentCash + amountChange
-                    : proj.currentCash,
-                currentBank:
-                  transaction.method === "BANK"
-                    ? proj.currentBank + amountChange
-                    : proj.currentBank,
-              };
-            }
-            return proj;
-          });
+          const updatedProjects = state.projects.map((proj) =>
+            proj.id === transaction.projectId
+              ? applyTransaction(proj, transaction, -1)
+              : proj,
+          );
 
           return {
             transactions: state.transactions.filter(
@@ -291,7 +214,7 @@ export const useStore = create<AppState>()(
           };
         }),
 
-      // ----- NEW: Messaging state & actions -----
+      // ----- Messaging -----
       conversations: defaultConversations,
       messages: defaultMessages,
 
@@ -306,10 +229,8 @@ export const useStore = create<AppState>()(
       addMessage: (conversationId, msg) =>
         set((state) => {
           const currentMsgs = state.messages[conversationId] || [];
-          // Prepend to array because FlatList is inverted (index 0 is bottom)
           const updatedMsgs = [msg, ...currentMsgs];
 
-          // Update parent conversation's metadata
           const updatedConversations = state.conversations.map((conv) => {
             if (conv.id === conversationId) {
               return {

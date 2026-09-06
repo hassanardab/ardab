@@ -1,13 +1,12 @@
-//src/services/invoiceTemplates/spareParts.ts
 /**
  * Spare Parts invoice HTML template.
  *
- * Redesigned to follow the traditional automotive spare-parts
- * invoice layout shown in the attached reference image (Evans Toyota style).
- *
- * IMPORTANT:
- * This template only changes the Spare Parts invoice design.
+ * Redesigned to feature a highly professional, structured header section
+ * optimized for A4 printing, utilizing clear containment boxes and typography.
  */
+
+import { formatPhoneNumber } from "../../utils/format";
+
 export const getSparePartsInvoiceHtml = (
   invoice: any,
   logoDataUri: string,
@@ -19,333 +18,268 @@ export const getSparePartsInvoiceHtml = (
   taxAmount: number,
   discountAmount: number,
   total: number,
-  itemsRows: string,
-): string => {
-  // Extract time from generatedDate if present or fallback
+) => {
   const timeStr = new Date().toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
+    hour12: true,
+    hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
   });
+
+  // Build rows directly from invoice.items
+  const itemsRows = invoice.items
+    .map(
+      (item: any, index: number) => `
+        <tr>
+          <td class="col-qty">${index + 1}</td>
+          <td class="col-desc">${escapeHtml(item.item)}</td>
+          <td class="col-source">${escapeHtml(item.description) || "-"}</td>
+          <td class="col-list">${item.quantity}</td>
+          <td class="col-net">${formatMoney(item.price)}</td>
+          <td class="col-amount">${formatMoney(item.quantity * item.price)}</td>
+        </tr>
+      `,
+    )
+    .join("");
+
+  const formattedCustomerPhone = formatPhoneNumber(invoice.phoneNumber || "");
+  const formattedCompanyPhone = invoice.companyPhone
+    ? formatPhoneNumber(invoice.companyPhone)
+    : "";
 
   return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <style>
-          @page {
-            size: A4;
-            margin: 6mm 8mm;
-          }
-
-          * {
-            box-sizing: border-box;
-          }
-
+          @page { size: A4; margin: 8mm; }
+          * { box-sizing: border-box; }
           html, body {
             margin: 0;
             padding: 0;
             background: #ffffff;
             color: #000000;
-            font-family: "Courier New", Courier, monospace;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 10px;
           }
-
-          .invoice-container {
-            width: 100%;
-          }
+          .invoice-container { width: 100%; max-width: 100%; margin: 0 auto; }
 
           /* =========================================
-             HEADER SECTION
+             UPPER SECTION - PROFESSIONAL REDESIGN
           ========================================== */
-          .company-header {
-            text-align: center;
-            padding-bottom: 6px;
+          
+          .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #222;
+            margin-bottom: 20px;
           }
 
-          .company-logo {
-            max-width: 160px;
-            max-height: 60px;
-            margin: 0 auto 4px auto;
-            display: block;
-            object-fit: contain;
+          .company-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 60%;
           }
 
-          .company-name {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 20px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 2px;
+          .company-logo-container {
+            flex-shrink: 0;
+            display: flex;
+          }
+          .company-logo { 
+            max-width: 130px; 
+            max-height: 75px; 
+            object-fit: contain; 
           }
 
           .company-details {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 8.5px;
-            line-height: 1.3;
+            line-height: 1.4;
+            color: #333;
+          }
+          .company-name {
+            font-size: 16px;
+            font-weight: 900;
             color: #000;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            letter-spacing: 0.5px;
+          }
+          .company-details .company-address,
+          .company-details .company-phone {
+            font-size: 10px;
+            color: #555;
           }
 
-          /* =========================================
-             SOLD TO / SHIPPED TO BANNER
-          ========================================== */
-          .address-box {
-            border: 1px solid #000;
-            margin-bottom: 4px;
+          .invoice-meta {
+            width: 35%;
+            text-align: right;
           }
-
-          .address-header-bar {
-            background: #000;
-            color: #fff;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 8px;
+          .invoice-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+          }
+          
+          .meta-grid {
+            display: grid;
+            grid-template-columns: auto auto;
+            row-gap: 4px;
+            column-gap: 15px;
+            justify-content: end;
+            font-size: 10px;
+          }
+          .meta-label {
+            color: #666;
             font-weight: bold;
-            padding: 3px 6px;
+            text-transform: uppercase;
+          }
+          .meta-value {
+            color: #000;
+            font-weight: bold;
+          }
+
+          /* Panels */
+          .panels-wrapper {
             display: flex;
             justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 25px;
           }
-
-          .address-content {
-            padding: 8px 10px;
-            font-size: 11px;
-            font-weight: bold;
-            line-height: 1.6;
-            min-height: 55px;
-            text-transform: uppercase;
+          .panel {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
           }
-
-          .address-content .customer-detail {
-            font-weight: normal;
-            font-size: 10px;
-            color: #333;
-            text-transform: none;
-          }
-
-          /* =========================================
-             POLICY SECTION
-          ========================================== */
-          .policy-text {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 6px;
-            line-height: 1.25;
-            text-align: center;
-            font-weight: bold;
-            padding: 4px 2px;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-          }
-
-          /* =========================================
-             META DATA TABLES
-          ========================================== */
-          .meta-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: -1px;
-          }
-
-          .meta-table td {
-            border: 1px solid #000;
-            padding: 0;
-            vertical-align: top;
-          }
-
-          .meta-label {
-            background: #000;
-            color: #fff;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 7px;
-            font-weight: bold;
-            padding: 2px 4px;
-            text-transform: uppercase;
-          }
-
-          .meta-value {
-            padding: 4px 6px;
-            font-size: 11px;
-            font-weight: bold;
-            min-height: 20px;
-          }
-
-          .meta-value .contact-info {
-            font-weight: normal;
+          .panel-header {
+            background-color: #f4f5f7;
+            border-bottom: 1px solid #ddd;
+            padding: 6px 10px;
             font-size: 9px;
-            color: #333;
+            font-weight: bold;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .panel-body {
+            padding: 10px;
+            font-size: 10px;
+            line-height: 1.5;
+            color: #222;
+            flex-grow: 1;
+          }
+          .customer-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 4px;
+          }
+          
+          .order-details-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            row-gap: 6px;
+            column-gap: 10px;
+          }
+          .od-label {
+            font-weight: bold;
+            color: #555;
+          }
+          .od-value {
+            color: #000;
+            text-align: left;
           }
 
-          /* =========================================
-             PARTS TABLE
-          ========================================== */
+          /* Parts Table */
           .parts-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin-bottom: 20px;
           }
-
           .parts-table th {
-            background: #000;
+            background: #222;
             color: #fff;
-            border: 1px solid #000;
+            border: 1px solid #222;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 7.5px;
+            font-size: 9px;
             font-weight: bold;
-            padding: 3px 2px;
-            text-transform: uppercase;
+            padding: 8px 6px;
             text-align: left;
+            text-transform: uppercase;
           }
-
           .parts-table td {
-            border-left: 1px solid #000;
-            border-right: 1px solid #000;
-            padding: 3px 4px;
+            border-bottom: 1px solid #eee;
+            border-left: 1px solid #eee;
+            border-right: 1px solid #eee;
+            padding: 8px 6px;
             font-size: 10px;
-            font-weight: bold;
             vertical-align: top;
-            height: 22px;
           }
+          .col-qty { width: 5%; text-align: center; }
+          .col-desc { width: 22%; text-align: left; font-weight: bold; }
+          .col-source { width: 37%; text-align: left; color: #444; }
+          .col-list { width: 12%; text-align: left; }
+          .col-net { width: 12%; text-align: left; }
+          .col-amount { width: 12%; text-align: right; font-weight: bold; }
 
-          .col-qty { width: 6%; text-align: center; }
-          .col-desc { width: 48%; text-align: left; }
-          .col-source { width: 10%; text-align: left; }
-          .col-list { width: 12%; text-align: right; }
-          .col-net { width: 12%; text-align: right; }
-          .col-amount { width: 12%; text-align: right; }
-
-          /* Empty fill rows to preserve full invoice table height */
-          .empty-row td {
-            height: 22px;
-          }
-
-          /* =========================================
-             BOTTOM SECTION
-          ========================================== */
           .bottom-container {
-            display: table;
+            display: flex;
+            justify-content: space-between;
             width: 100%;
-            border: 1px solid #000;
             page-break-inside: avoid;
+            margin-top: 20px;
           }
-
-          .bottom-left-cell {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-            border-right: 1px solid #000;
-          }
-
-          .bottom-right-cell {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-          }
-
-          /* Print Date / Time header */
-          .date-time-bar {
-            display: table;
-            width: 100%;
-            border-bottom: 1px solid #000;
-            font-family: Arial, Helvetica, sans-serif;
+          .bottom-left-cell { width: 55%; padding-right: 30px; }
+          .bottom-right-cell { width: 40%; }
+          .warning-banner {
+            background-color: #f9f9f9;
+            border-left: 3px solid #222;
+            padding: 8px;
             font-size: 8px;
             font-weight: bold;
-          }
-
-          .date-time-cell {
-            display: table-cell;
-            padding: 3px 5px;
-          }
-
-          .date-time-cell span {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 10px;
-            margin-left: 5px;
-          }
-
-          /* Hours section */
-          .hours-box {
-            text-align: center;
-            padding: 6px 4px;
-            font-family: Arial, Helvetica, sans-serif;
-          }
-
-          .hours-title {
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-          }
-
-          .hours-body {
-            font-size: 11px;
-            font-weight: 500;
-            line-height: 1.35;
-          }
-
-          .thank-you-title {
-            text-align: center;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 28px;
-            font-weight: 900;
-            margin: 4px 0;
-            letter-spacing: 0.5px;
-          }
-
-          .warning-banner {
-            background: #000;
-            color: #fff;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 6.5px;
-            font-weight: bold;
-            text-align: center;
-            padding: 3px 2px;
             text-transform: uppercase;
+            color: #333;
+            margin-bottom: 25px;
           }
 
-          /* Summary Table */
           .summary-table {
             width: 100%;
             border-collapse: collapse;
           }
-
           .summary-table td {
-            border-bottom: 1px solid #000;
-            padding: 3px 6px;
-            font-size: 9px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-weight: bold;
+            padding: 6px 8px;
+            font-size: 10px;
             text-transform: uppercase;
-            height: 22px;
+            border-bottom: 1px solid #eee;
           }
-
           .summary-table td.val-col {
             text-align: right;
-            font-family: "Courier New", Courier, monospace;
-            font-size: 11px;
-            width: 35%;
-          }
-
-          .summary-table tr:last-child td {
-            border-bottom: none;
-          }
-
-          .signature-area {
-            padding: 8px 0 2px 0;
-            font-family: Arial, Helvetica, sans-serif;
             font-size: 11px;
             font-weight: bold;
           }
-
-          .copyright-footer {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 6px;
-            color: #333;
-            margin-top: 2px;
+          .total-row td {
+            border-top: 2px solid #222;
+            border-bottom: none;
+            font-weight: 900;
+            font-size: 14px;
+            color: #000;
+            padding-top: 10px;
+          }
+          .signature-area {
+            padding-top: 15px;
+            border-top: 1px dashed #ccc;
+            font-size: 10px;
+            color: #555;
+            width: 80%;
           }
         </style>
       </head>
@@ -353,183 +287,142 @@ export const getSparePartsInvoiceHtml = (
       <body>
         <div class="invoice-container">
 
-          <!-- Header -->
-          <div class="company-header">
-            ${
-              logoDataUri
-                ? `<img src="${logoDataUri}" class="company-logo" alt="Logo" />`
-                : ""
-            }
-            <div class="company-name">${escapeHtml(invoice.companyName)}</div>
-            <div class="company-details">
-              SPARE PARTS DEPARTMENT & SERVICES<br />
-              Phone: (260) 482-3730
+          <!-- TOP HEADER SECTION -->
+          <div class="top-header">
+            <div class="company-brand">
+              ${
+                logoDataUri
+                  ? `<div class="company-logo-container">
+                       <img src="${logoDataUri}" class="company-logo" alt="Company Logo" />
+                     </div>`
+                  : ""
+              }
+              <div class="company-details">
+                <div class="company-name">${escapeHtml(invoice.companyName)}</div>
+                <div>Spare Parts Department & Services</div>
+                ${invoice.companyAddress ? `<div class="company-address">${escapeHtml(invoice.companyAddress)}</div>` : ""}
+                ${formattedCompanyPhone ? `<div class="company-phone">Phone: ${formattedCompanyPhone}</div>` : ""}
+              </div>
             </div>
-          </div>
 
-          <!-- Sold To / Shipped To -->
-          <div class="address-box">
-            <div class="address-header-bar">
-              <span>SOLD TO</span>
-              <span>SHIPPED TO</span>
-            </div>
-            <div class="address-content">
-              ${escapeHtml(invoice.customerName)}<br />
-              <span class="customer-detail">📞 ${escapeHtml(invoice.phoneNumber || "")}</span><br />
-              <span class="customer-detail">📍 ${escapeHtml(invoice.address || "")}</span>
-            </div>
-          </div>
-
-          <!-- Detailed Dealership Return Policy -->
-          <div class="policy-text">
-            RETURN POLICY: PLEASE RETAIN YOUR COPY OF THIS INVOICE - WE CAN NOT PROCESS ANY RETURNS OR WARRANTY CLAIMS WITHOUT YOUR ORIGINAL INVOICE.<br />
-            ALL ELIGIBLE RETURNS MUST BE MADE WITHIN 30 DAYS OF INVOICE DATE AND ARE SUBJECT TO A 20% HANDLING CHARGE.<br />
-            ITEMS WITH AN INDIVIDUAL PRICE OF $15.00 OR LESS, ALL SALES FINAL.<br />
-            THE FOLLOWING ITEMS ARE NON-RETURNABLE: SHIPPING CHARGES, ELECTRICAL PARTS, SPECIAL ORDER PARTS, PARTS IN DAMAGED OR OPEN PACKAGES, PARTS NOT IN ORIGINAL PACKAGES, PARTS WITH ALTERED OR DAMAGED PART LABELS (INCLUDING BUT NOT LIMITED TO WRITING ON THE LABEL), CORES RETURNED WITHOUT ORIGINAL PACKAGING, PARTS SOLD IN MULTIPLE QUANTITIES NOT RETURNED IN THE PACK QUANTITY (NO PARTIAL PACKS ACCEPTED FOR RETURN). WE ARE UNABLE TO PROCESS ANY CLAIMS FOR CONCEALED DAMAGE ONCE YOU ACCEPT YOUR PARTS. PLEASE INSPECT ALL PARTS BEFORE LEAVING THE STORE.
-          </div>
-
-          <!-- Invoice Primary Meta -->
-          <table class="meta-table">
-            <tr>
-              <td style="width: 20%;">
-                <div class="meta-label">CUSTOMER</div>
-                <div class="meta-value" style="font-size: 10px; font-weight: bold;">
-                  ${escapeHtml(invoice.customerName)}
-                  <div class="contact-info">📞 ${escapeHtml(invoice.phoneNumber || "")}</div>
-                  <div class="contact-info">📍 ${escapeHtml(invoice.address || "")}</div>
-                </div>
-              </td>
-              <td style="width: 20%;">
-                <div class="meta-label">PHONE</div>
-                <div class="meta-value" style="font-size: 10px;">
-                  ${escapeHtml(invoice.phoneNumber || "")}
-                </div>
-              </td>
-              <td style="width: 25%;">
-                <div class="meta-label">TERMS</div>
-                <div class="meta-value">Payment Due Upon Receipt.</div>
-              </td>
-              <td style="width: 17%;">
-                <div class="meta-label">INVOICE DATE</div>
+            <div class="invoice-meta">
+              <div class="invoice-title">Invoice</div>
+              <div class="meta-grid">
+                <div class="meta-label">Invoice #</div>
+                <div class="meta-value">${escapeHtml(invoice.id)}</div>
+                
+                <div class="meta-label">Date</div>
                 <div class="meta-value">${dateStr}</div>
-              </td>
-              <td style="width: 18%;">
-                <div class="meta-label">INVOICE NUMBER / PG.</div>
-                <div class="meta-value">${escapeHtml(invoice.id)} &nbsp;1</div>
-              </td>
-            </tr>
-          </table>
+                
+                <div class="meta-label">Time</div>
+                <div class="meta-value">${timeStr}</div>
 
-          <!-- Invoice Secondary Meta -->
-          <table class="meta-table" style="margin-bottom: 0;">
-            <tr>
-              <td style="width: 50%;">
-                <div class="meta-label">SHIP VIA</div>
-                <div class="meta-value">WILL CALL</div>
-              </td>
-              <td style="width: 50%;">
-                <div class="meta-label">SALESPERSONS NAME</div>
-                <div class="meta-value">-</div>
-              </td>
-            </tr>
-          </table>
+                <div class="meta-label">Paid Amount</div>
+                <div class="meta-value">${formatMoney(0)}</div>
 
-          <!-- Parts Table -->
+                <div class="meta-label">Status</div>
+                <div class="meta-value">Quoted</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ADDRESS & DETAILS PANELS -->
+          <div class="panels-wrapper">
+            <!-- Billing Box -->
+            <div class="panel">
+              <div class="panel-header">Bill To</div>
+              <div class="panel-body">
+                <div class="customer-name">${escapeHtml(invoice.customerName)}</div>
+                <div>${formattedCustomerPhone}</div>
+                <div style="margin-top: 4px; color: #555;">
+                  ${escapeHtml(invoice.address || "Address Not Provided")}
+                </div>
+              </div>
+            </div>
+
+            <!-- Shipping Box -->
+            <div class="panel">
+              <div class="panel-header">Ship To</div>
+              <div class="panel-body">
+                <div class="customer-name">${escapeHtml(invoice.customerName)}</div>
+                <div style="margin-top: 4px; color: #555;">
+                  ${escapeHtml(invoice.address || "Same as Billing")}
+                </div>
+              </div>
+            </div>
+
+            <!-- Order Details Box -->
+            <div class="panel">
+              <div class="panel-header">Invoice Details</div>
+              <div class="panel-body order-details-grid">
+                <div class="od-label">Sale Type:</div>
+                <div class="od-value">Wholesale</div>
+                
+                <div class="od-label">PO No:</div>
+                <div class="od-value">-</div>
+                
+                <div class="od-label">Sales Rep:</div>
+                <div class="od-value">SYSTEM</div>
+                
+                <div class="od-label">Terms:</div>
+                <div class="od-value">Due on Receipt</div>
+                
+                <div class="od-label">Payment:</div>
+                <div class="od-value">None</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PARTS TABLE -->
           <table class="parts-table">
             <thead>
               <tr>
-                <th class="col-qty">QTY.</th>
-                <th class="col-desc">DESCRIPTION</th>
-                <th class="col-source">SOURCE</th>
-                <th class="col-list">LIST</th>
-                <th class="col-net">NET</th>
-                <th class="col-amount">AMOUNT</th>
+                <th class="col-qty">#</th>
+                <th class="col-desc">Part</th>
+                <th class="col-source">Description</th>
+                <th class="col-list">Qty</th>
+                <th class="col-net">Unit Price</th>
+                <th class="col-amount">Total</th>
               </tr>
             </thead>
             <tbody>
               ${itemsRows}
-              <!-- Fill remaining space with empty rows for classic grid look -->
-              <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             </tbody>
           </table>
 
-          <!-- Bottom Section -->
+          <!-- BOTTOM SECTION -->
           <div class="bottom-container">
-            <!-- Left Box -->
             <div class="bottom-left-cell">
-              <div class="date-time-bar">
-                <div class="date-time-cell" style="border-right: 1px solid #000; width: 50%;">
-                  DATE PRINTED <span>${generatedDate}</span>
-                </div>
-                <div class="date-time-cell" style="width: 50%;">
-                  TIME <span>${timeStr}</span>
-                </div>
-              </div>
-
-              <div class="hours-box">
-                <div class="hours-title">PARTS DEPARTMENT HOURS</div>
-                <div class="hours-body">
-                  7:30 a.m. to 6:00 p.m. Mon - Fri<br />
-                  8:00 a.m. to 5:00 p.m. Sat
-                </div>
-              </div>
-
-              <div class="thank-you-title">Thank You!</div>
-
-              <div class="warning-banner">
-                NO RETURN ON ELECTRICAL OR SAFETY ITEMS OR SPECIAL ORDERS.
+            
+              <div class="signature-area">
+                Authorized Signature & Date
               </div>
             </div>
-
-            <!-- Right Box / Summary -->
+            
             <div class="bottom-right-cell">
               <table class="summary-table">
                 <tr>
-                  <td>SERVICES OR EQUIPMENT</td>
+                  <td>Subtotal</td>
                   <td class="val-col">${formatMoney(subtotal)}</td>
                 </tr>
                 <tr>
-                  <td>SHIPPING</td>
-                  <td class="val-col"></td>
-                </tr>
-                <tr>
-                  <td>C.O.D. CHARGE</td>
-                  <td class="val-col"></td>
-                </tr>
-                <tr>
-                  <td>SALES TAX OR TAX I.D. ${invoice.tax > 0 ? `(${invoice.tax}%)` : "XXXFILE"}</td>
+                  <td>Sales Tax ${invoice.tax > 0 ? `(${invoice.tax}%)` : ""}</td>
                   <td class="val-col">${formatMoney(taxAmount)}</td>
                 </tr>
                 ${
                   invoice.discount > 0
                     ? `<tr>
-                        <td>DISCOUNT (${invoice.discount}%)</td>
-                        <td class="val-col">-${formatMoney(discountAmount)}</td>
+                         <td>Discount (${invoice.discount}%)</td>
+                         <td class="val-col">-${formatMoney(discountAmount)}</td>
                        </tr>`
                     : ""
                 }
-                <tr>
-                  <td>DEPOSIT ON CONTRACT</td>
-                  <td class="val-col">.00</td>
-                </tr>
-                <tr style="border-top: 2px solid #000;">
-                  <td style="font-size: 11px;">TOTAL</td>
-                  <td class="val-col" style="font-size: 13px;">${formatMoney(total)}</td>
+                <tr class="total-row">
+                  <td>Total</td>
+                  <td class="val-col">${formatMoney(total)}</td>
                 </tr>
               </table>
             </div>
-          </div>
-
-          <!-- Signature Line & Footer -->
-          <div class="signature-area">
-            X ____________________________________________________
-          </div>
-          <div class="copyright-footer">
-            &copy; Dealership Application Group - Spare Parts Division
           </div>
 
         </div>

@@ -5,13 +5,9 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Invoice, Project, Transaction } from "../types";
 
-// Import the separate invoice templates
 import { getBodyShopInvoiceHtml } from "./invoiceTemplates/bodyShop";
 import { getSparePartsInvoiceHtml } from "./invoiceTemplates/spareParts";
 
-/**
- * Convert a local file URI to base64 data URI.
- */
 async function getImageBase64(uri: string): Promise<string> {
   try {
     const base64 = await FileSystem.readAsStringAsync(uri, {
@@ -24,12 +20,8 @@ async function getImageBase64(uri: string): Promise<string> {
   }
 }
 
-// Grab the local app logo reference
 const LOGO_ASSET = require("@/assets/images/icon.png");
 
-/**
- * Get base64 data of an asset – robust for debug and release builds.
- */
 async function getAssetBase64(asset: Asset): Promise<string> {
   await asset.downloadAsync();
   let uri = asset.localUri || asset.uri;
@@ -56,19 +48,23 @@ async function getAssetBase64(asset: Asset): Promise<string> {
   }
 }
 
-/**
- * Generate invoice HTML based on invoice type.
- * - BODY_SHOP: detailed estimate‑style layout.
- * - SPARE_PARTS: compact sales invoice layout.
- */
 export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
-  // Convert company logo if available
+  // ----- Logo: try company logo, fallback to default app icon -----
   let logoDataUri = "";
   if (invoice.companyLogo) {
-    logoDataUri = await getImageBase64(invoice.companyLogo);
+    try {
+      logoDataUri = await getImageBase64(invoice.companyLogo);
+    } catch (e) {
+      console.warn("Failed to load company logo, using default.", e);
+    }
+  }
+  if (!logoDataUri) {
+    const defaultAsset = Asset.fromModule(require("@/assets/images/icon.png"));
+    const base64 = await getAssetBase64(defaultAsset);
+    logoDataUri = `data:image/png;base64,${base64}`;
   }
 
-  // Calculate totals
+  // ----- Calculate totals -----
   const subtotal = invoice.items.reduce(
     (sum, item) => sum + item.quantity * item.price,
     0,
@@ -99,7 +95,7 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       .replace(/'/g, "&#039;");
   };
 
-  // Build items rows (common for both designs)
+  // Build items rows (only used for BODY_SHOP; SPARE_PARTS builds its own)
   const itemsRows = invoice.items
     .map(
       (item, index) => `
@@ -107,18 +103,18 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
           <td class="line-number">${index + 1}</td>
           <td class="item-description">
             <div class="item-name">${escapeHtml(item.item)}</div>
-            ${
-              item.description
-                ? `<div class="item-details">${escapeHtml(item.description)}</div>`
-                : ""
-            }
-          </td>
-          <td class="operation">${escapeHtml(item.description) || "-"}</td>
-          <td class="units">${item.quantity}</td>
-          <td class="unit-price">${formatMoney(item.price)}</td>
-          <td class="total-price">${formatMoney(item.quantity * item.price)}</td>
-        </tr>
-      `,
+              ${
+                item.description
+                  ? `<div class="item-details">${escapeHtml(item.description)}</div>`
+                  : ""
+              }
+            </td>
+            <td class="operation">${escapeHtml(item.description) || "-"}</td>
+            <td class="units">${item.quantity}</td>
+            <td class="unit-price">${formatMoney(item.price)}</td>
+            <td class="total-price">${formatMoney(item.quantity * item.price)}</td>
+          </tr>
+        `,
     )
     .join("");
 
@@ -135,9 +131,10 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       taxAmount,
       discountAmount,
       total,
-      itemsRows,
+      itemsRows, // BODY_SHOP requires this extra argument
     );
   } else {
+    // SPARE_PARTS does NOT accept itemsRows – it builds its own internally
     return getSparePartsInvoiceHtml(
       invoice,
       logoDataUri,
@@ -149,14 +146,10 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       taxAmount,
       discountAmount,
       total,
-      itemsRows,
     );
   }
 };
 
-/**
- * Export an invoice as PDF and share it.
- */
 export const exportInvoicePdf = async (invoice: Invoice) => {
   const html = await getInvoiceHtml(invoice);
   const fileName = `فاتورة-${invoice.id}-${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -195,6 +188,8 @@ export const getFinancialReportHtml = async (
     BANK_FEE: 0,
     ABDU: 0,
     TRANSPORTATION: 0,
+    LOAN_GIVEN: 0,
+    LOAN_RECEIVED: 0,
   };
   projectTransactions.forEach((t) => {
     if (categoryTotals[t.type] !== undefined) {
@@ -202,9 +197,9 @@ export const getFinancialReportHtml = async (
     }
   });
 
-  const totalIncome = categoryTotals.INCOME;
+  const totalIncome = categoryTotals.INCOME + categoryTotals.LOAN_RECEIVED; // include loans received as income
   const totalExpenses = projectTransactions
-    .filter((t) => t.type !== "INCOME")
+    .filter((t) => t.type !== "INCOME" && t.type !== "LOAN_RECEIVED")
     .reduce((sum, t) => sum + t.amount, 0);
 
   const todayDate = new Date().toLocaleDateString("ar-EG", {
@@ -231,6 +226,10 @@ export const getFinancialReportHtml = async (
         return "فواتير";
       case "TRANSFER":
         return "سحب كاش";
+      case "LOAN_GIVEN":
+        return "قرض مُعطى";
+      case "LOAN_RECEIVED":
+        return "قرض مأخوذ";
       default:
         return type;
     }
@@ -241,7 +240,7 @@ export const getFinancialReportHtml = async (
       ([type, amount]) => `
       <tr>
         <td style="padding:8px; border:1px solid #cbd5e1; text-align:right;">${getTypeLabel(type)}</td>
-        <td style="padding:8px; border:1px solid #cbd5e1; text-align:left; ${type === "INCOME" ? "color:#10b981;" : "color:#ef4444;"}">
+        <td style="padding:8px; border:1px solid #cbd5e1; text-align:left; ${type === "INCOME" || type === "LOAN_RECEIVED" ? "color:#10b981;" : "color:#ef4444;"}">
           ${formatCurrency(amount)}
         </td>
       </tr>

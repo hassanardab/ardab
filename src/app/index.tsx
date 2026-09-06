@@ -17,7 +17,7 @@ import { formatCurrency } from "../utils/format";
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { projects, addProject, updateProject } = useStore();
+  const { projects, transactions, addProject, updateProject } = useStore();
   const [newProjectName, setNewProjectName] = useState("");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
@@ -55,12 +55,27 @@ export default function DashboardScreen() {
     setSelectedProjectId(projectId);
     setIsModalVisible(true);
   };
-  // Format today's date in Arabic (e.g., "الخميس، ٣ سبتمبر")
+
+  // Format today's date in Arabic
   const formattedDate = new Intl.DateTimeFormat("ar-EG", {
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date());
+
+  // Compute net loan balance for a project
+  const getLoanBalance = (projectId: string): number => {
+    const projectTransactions = transactions.filter(
+      (t) => t.projectId === projectId,
+    );
+    const totalReceived = projectTransactions
+      .filter((t) => t.type === "LOAN_RECEIVED")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalGiven = projectTransactions
+      .filter((t) => t.type === "LOAN_GIVEN")
+      .reduce((sum, t) => sum + t.amount, 0);
+    return totalReceived - totalGiven;
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -76,41 +91,57 @@ export default function DashboardScreen() {
         />
       </View>
 
-      {projects.map((project) => (
-        <TouchableOpacity
-          key={project.id}
-          style={styles.card}
-          onPress={() => router.push(`/project/${project.id}`)}
-          onLongPress={() => handleEditProject(project)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cardTitle}>{project.name}</Text>
-          <View style={styles.balanceRow}>
-            <View style={styles.balanceBlock}>
-              <Text style={styles.label}>الرصيد النقدي</Text>
-              <Text style={styles.cashAmount}>
-                {formatCurrency(project.currentCash)}
-              </Text>
-            </View>
-            <View style={styles.balanceBlock}>
-              <Text style={styles.label}>الرصيد البنكي</Text>
-              <Text style={styles.bankAmount}>
-                {formatCurrency(project.currentBank)}
-              </Text>
-            </View>
-          </View>
-
+      {projects.map((project) => {
+        const loanBalance = getLoanBalance(project.id);
+        return (
           <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={(e) => {
-              e.stopPropagation();
-              openTransactionModal(project.id);
-            }}
+            key={project.id}
+            style={styles.card}
+            onPress={() => router.push(`/project/${project.id}`)}
+            onLongPress={() => handleEditProject(project)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
+            <Text style={styles.cardTitle}>{project.name}</Text>
+            <View style={styles.balanceRow}>
+              <View style={styles.balanceBlock}>
+                <Text style={styles.label}>الرصيد النقدي</Text>
+                <Text style={styles.cashAmount}>
+                  {formatCurrency(project.currentCash)}
+                </Text>
+              </View>
+              <View style={styles.balanceBlock}>
+                <Text style={styles.label}>الرصيد البنكي</Text>
+                <Text style={styles.bankAmount}>
+                  {formatCurrency(project.currentBank)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Loan Balance Row */}
+            <View style={styles.loanRow}>
+              <Text style={styles.label}>صافي القروض</Text>
+              <Text
+                style={[
+                  styles.loanAmount,
+                  loanBalance >= 0 ? styles.positiveLoan : styles.negativeLoan,
+                ]}
+              >
+                {formatCurrency(loanBalance)}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                openTransactionModal(project.id);
+              }}
+            >
+              <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
+        );
+      })}
 
       <View style={styles.form}>
         <TextInput
@@ -128,7 +159,7 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* المودال المستقل */}
+      {/* Transaction Modal */}
       {selectedProjectId && (
         <AddTransactionBottomSheet
           projectId={selectedProjectId}
@@ -136,6 +167,7 @@ export default function DashboardScreen() {
           onClose={() => setIsModalVisible(false)}
         />
       )}
+
       {/* Edit Project Modal */}
       <Modal
         visible={!!editingProject}
@@ -191,7 +223,6 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 20,
     margin: 24,
-    // center vertically
     marginTop: "auto",
     marginBottom: "auto",
   },
@@ -200,10 +231,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 16,
   },
-  // we reuse modalOverlay from existing styles (it's defined below)
-  // but we need to ensure it's available; it's already there for the transaction modal
-  // So we can reuse it.
-
   header: {
     fontSize: 24,
     fontWeight: "bold",
@@ -234,12 +261,27 @@ const styles = StyleSheet.create({
   balanceRow: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   balanceBlock: { flex: 1, alignItems: "flex-start" },
   label: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
   cashAmount: { fontSize: 20, fontWeight: "bold", color: "#059669" },
   bankAmount: { fontSize: 20, fontWeight: "bold", color: "#2563eb" },
+  loanRow: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+  },
+  loanAmount: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  positiveLoan: { color: "#8B5CF6" }, // purple
+  negativeLoan: { color: "#EF4444" }, // red (if you owe more than you received)
   actionBtn: {
     backgroundColor: "#f3f4f6",
     padding: 12,

@@ -9,8 +9,9 @@ export type TransactionType =
   | "ABDU"
   | "PAYROLL"
   | "BANK_FEE"
-  | "TRANSFER";
-
+  | "TRANSFER"
+  | "LOAN_GIVEN"
+  | "LOAN_RECEIVED";
 // NEW: invoice type
 export type InvoiceType = "BODY_SHOP" | "SPARE_PARTS";
 
@@ -61,7 +62,9 @@ export interface Invoice {
   type: InvoiceType;
   companyName: string;
   companyLogo?: string;
+  companyAddress?: string; // NEW
   customerName: string;
+  companyPhone?: string; // NEW: company phone
   date: string;
   phoneNumber: string;
   address: string;

@@ -15,6 +15,13 @@ import {
 } from "react-native";
 import { useStore } from "../store/useStore";
 import { Invoice, InvoiceItem, InvoiceType } from "../types";
+import {
+  formatNumberWithCommas,
+  formatPhoneNumber,
+  formatPriceInputDisplay,
+  parseFormattedNumberWithDecimals,
+  stripPhoneFormatting,
+} from "../utils/format";
 
 interface Props {
   visible: boolean;
@@ -36,17 +43,23 @@ export default function InvoiceBottomSheet({
   const [companyName, setCompanyName] = useState("");
   const [companyLogo, setCompanyLogo] = useState<string | undefined>(undefined);
   const [customerName, setCustomerName] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(""); // store raw digits
+  const [address, setAddress] = useState("");
   const [date, setDate] = useState(new Date());
+  const [companyAddress, setCompanyAddress] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [address, setAddress] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: generateId(), item: "", description: "", quantity: 1, price: 0 },
   ]);
   const [tax, setTax] = useState(0);
   const [discount, setDiscount] = useState(0);
 
+  // For price inputs per item
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
+
+  // Load data when editing or opening
   useEffect(() => {
     if (visible) {
       setErrorMessage(null);
@@ -54,35 +67,45 @@ export default function InvoiceBottomSheet({
         setType(invoiceToEdit.type || "BODY_SHOP");
         setCompanyName(invoiceToEdit.companyName);
         setCompanyLogo(invoiceToEdit.companyLogo);
+        setCompanyAddress(invoiceToEdit.companyAddress || "");
         setCustomerName(invoiceToEdit.customerName);
-        setPhoneNumber(invoiceToEdit.phoneNumber || "");
+        setCompanyPhone(invoiceToEdit.companyPhone || "");
+        setPhoneNumber(stripPhoneFormatting(invoiceToEdit.phoneNumber || ""));
         setAddress(invoiceToEdit.address || "");
         setDate(new Date(invoiceToEdit.date));
-        setItems(
-          invoiceToEdit.items.map((item) => ({
-            ...item,
-            id: item.id || generateId(),
-          })),
-        );
+        const loadedItems = invoiceToEdit.items.map((item) => ({
+          ...item,
+          id: item.id || generateId(),
+        }));
+        setItems(loadedItems);
+        const inputs: Record<string, string> = {};
+        loadedItems.forEach((item) => {
+          inputs[item.id] = String(item.price);
+        });
+        setPriceInputs(inputs);
         setTax(invoiceToEdit.tax);
         setDiscount(invoiceToEdit.discount);
       } else {
+        // Reset for new invoice
         setType("BODY_SHOP");
         setCompanyName("");
         setCompanyLogo(undefined);
         setCustomerName("");
+        setPhoneNumber("");
+        setCompanyAddress("");
+        setAddress("");
+        setCompanyPhone("");
         setDate(new Date());
-        setPhoneNumber(""); // NEW
-        setAddress(""); // NEW
-        setItems([
-          {
-            id: generateId(),
-            item: "",
-            description: "",
-            quantity: 1,
-            price: 0,
-          },
-        ]);
+        const newItem = {
+          id: generateId(),
+          item: "",
+          description: "",
+          quantity: 1,
+          price: 0,
+        };
+        setItems([newItem]);
+        // NEW: Start with empty price input
+        setPriceInputs({ [newItem.id]: "" });
         setTax(0);
         setDiscount(0);
       }
@@ -90,11 +113,13 @@ export default function InvoiceBottomSheet({
   }, [visible, invoiceToEdit]);
 
   const handleSave = () => {
+    // Validate phone: we require at least 10 digits? We'll check if non-empty.
+    const rawPhone = phoneNumber.replace(/\D/g, "");
     if (
       !companyName.trim() ||
       !customerName.trim() ||
-      !phoneNumber.trim() || // NEW
-      !address.trim() || // NEW
+      rawPhone.length === 0 ||
+      !address.trim() ||
       items.some((i) => !i.item.trim() || i.quantity <= 0 || i.price < 0)
     ) {
       setErrorMessage("يرجى ملء جميع الحقول المطلوبة بشكل صحيح");
@@ -108,9 +133,11 @@ export default function InvoiceBottomSheet({
       companyName: companyName.trim(),
       companyLogo,
       customerName: customerName.trim(),
-      phoneNumber: phoneNumber.trim(),
+      phoneNumber: rawPhone, // store only digits
       address: address.trim(),
       date: date.toISOString(),
+      companyPhone: companyPhone.trim() || undefined, // if empty, store undefined
+      companyAddress: companyAddress.trim() || undefined, // NEW
       items: items.map((item) => ({
         ...item,
         id: item.id || generateId(),
@@ -147,15 +174,26 @@ export default function InvoiceBottomSheet({
   };
 
   const addItem = () => {
-    setItems([
-      ...items,
-      { id: generateId(), item: "", description: "", quantity: 1, price: 0 },
-    ]);
+    const newItem = {
+      id: generateId(),
+      item: "",
+      description: "",
+      quantity: 1,
+      price: 0,
+    };
+    setItems([...items, newItem]);
+    // NEW: Start with empty price input
+    setPriceInputs((prev) => ({ ...prev, [newItem.id]: "" }));
   };
 
   const removeItem = (id: string) => {
     if (items.length === 1) return;
     setItems(items.filter((item) => item.id !== id));
+    setPriceInputs((prev) => {
+      const newInputs = { ...prev };
+      delete newInputs[id];
+      return newInputs;
+    });
   };
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
@@ -164,6 +202,22 @@ export default function InvoiceBottomSheet({
         item.id === id ? { ...item, [field]: value } : item,
       ),
     );
+  };
+
+  const handlePriceChange = (id: string, text: string) => {
+    setPriceInputs((prev) => ({ ...prev, [id]: text }));
+    const num = parseFormattedNumberWithDecimals(text);
+    if (!isNaN(num) && text !== "" && !text.endsWith(".")) {
+      updateItem(id, "price", num);
+    } else if (text === "" || text === "-") {
+      updateItem(id, "price", 0);
+    }
+  };
+
+  const handlePhoneChange = (text: string) => {
+    // Keep only digits
+    const digits = text.replace(/\D/g, "");
+    setPhoneNumber(digits);
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -178,6 +232,9 @@ export default function InvoiceBottomSheet({
   const taxAmount = (subtotal * tax) / 100;
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal + taxAmount - discountAmount;
+
+  // Display formatted phone
+  const displayPhone = formatPhoneNumber(phoneNumber);
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -282,6 +339,37 @@ export default function InvoiceBottomSheet({
               />
             </View>
 
+            {/* Company Phone */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>رقم هاتف الشركة (اختياري)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل رقم هاتف الشركة"
+                placeholderTextColor="#9CA3AF"
+                value={formatPhoneNumber(companyPhone)} // re-use phone formatter
+                onChangeText={(text) =>
+                  setCompanyPhone(stripPhoneFormatting(text))
+                }
+                textAlign="right"
+                keyboardType="phone-pad"
+                maxLength={14}
+              />
+            </View>
+
+            {/* Company Address */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>عنوان الشركة (اختياري)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="أدخل عنوان الشركة"
+                placeholderTextColor="#9CA3AF"
+                value={companyAddress}
+                onChangeText={setCompanyAddress}
+                textAlign="right"
+                multiline
+                numberOfLines={2}
+              />
+            </View>
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>اسم العميل</Text>
               <TextInput
@@ -293,16 +381,19 @@ export default function InvoiceBottomSheet({
                 textAlign="right"
               />
             </View>
+
+            {/* Phone Input with formatting */}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>رقم الهاتف *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="أدخل رقم الهاتف"
+                placeholder="(XXX) XXX-XXXX"
                 placeholderTextColor="#9CA3AF"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
+                value={displayPhone}
+                onChangeText={handlePhoneChange}
                 textAlign="right"
                 keyboardType="phone-pad"
+                maxLength={14} // (XXX) XXX-XXXX
               />
             </View>
 
@@ -369,7 +460,7 @@ export default function InvoiceBottomSheet({
 
                 <TextInput
                   style={[styles.input, styles.itemInput]}
-                  placeholder="اسم الصنف / القطعة *"
+                  placeholder="رقم القطعة"
                   placeholderTextColor="#9CA3AF"
                   value={item.item}
                   onChangeText={(val) => updateItem(item.id, "item", val)}
@@ -394,11 +485,11 @@ export default function InvoiceBottomSheet({
                       style={styles.input}
                       placeholder="0.00"
                       placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      value={String(item.price)}
-                      onChangeText={(val) =>
-                        updateItem(item.id, "price", Number(val) || 0)
-                      }
+                      keyboardType="decimal-pad"
+                      value={formatPriceInputDisplay(
+                        priceInputs[item.id] ?? "",
+                      )}
+                      onChangeText={(text) => handlePriceChange(item.id, text)}
                       textAlign="right"
                     />
                   </View>
@@ -421,7 +512,7 @@ export default function InvoiceBottomSheet({
 
                 <View style={styles.lineTotalRow}>
                   <Text style={styles.lineTotalVal}>
-                    {(item.quantity * item.price).toFixed(2)}
+                    {formatNumberWithCommas(item.quantity * item.price)}
                   </Text>
                   <Text style={styles.lineTotalLabel}>الإجمالي الجزئي:</Text>
                 </View>
@@ -461,22 +552,28 @@ export default function InvoiceBottomSheet({
               <View style={styles.divider} />
 
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryValue}>{subtotal.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>
+                  {formatNumberWithCommas(subtotal)}
+                </Text>
                 <Text style={styles.summaryLabel}>المجموع الفرعي</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryValue}>{taxAmount.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>
+                  {formatNumberWithCommas(taxAmount)}
+                </Text>
                 <Text style={styles.summaryLabel}>قيمة الضريبة</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryValue}>
-                  -{discountAmount.toFixed(2)}
+                  -{formatNumberWithCommas(discountAmount)}
                 </Text>
                 <Text style={styles.summaryLabel}>قيمة الخصم</Text>
               </View>
 
               <View style={styles.totalRowContainer}>
-                <Text style={styles.totalValue}>{total.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>
+                  {formatNumberWithCommas(total)}
+                </Text>
                 <Text style={styles.totalLabel}>المبلغ الإجمالي</Text>
               </View>
             </View>
@@ -506,6 +603,7 @@ export default function InvoiceBottomSheet({
 }
 
 const styles = StyleSheet.create({
+  // ... (keep all your existing styles exactly as they were)
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
@@ -874,7 +972,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // In the styles object
   textArea: {
     minHeight: 60,
     textAlignVertical: "top",
