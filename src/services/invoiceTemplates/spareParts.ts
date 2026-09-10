@@ -53,7 +53,15 @@ export const getSparePartsInvoiceHtml = (
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <style>
-          @page { size: A4; margin: 8mm; }
+          @page {
+            size: A4;
+            margin: 6mm;
+            @bottom-center {
+              content: "Page " counter(page);
+              font-size: 9px;
+              color: #555;
+            }
+          }
           * { box-sizing: border-box; }
           html, body {
             margin: 0;
@@ -73,9 +81,9 @@ export const getSparePartsInvoiceHtml = (
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            padding-bottom: 20px;
+            padding-bottom: 15px;
             border-bottom: 2px solid #222;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
           }
 
           .company-brand {
@@ -198,37 +206,39 @@ export const getSparePartsInvoiceHtml = (
             text-align: left;
           }
 
-          /* Parts Table */
+          /* Parts Table - INCREASED ROW HEIGHT + ALIGNMENT FIXES */
           .parts-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
           }
           .parts-table th {
             background: #222;
             color: #fff;
             border: 1px solid #222;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: bold;
-            padding: 8px 6px;
-            text-align: left;
+            padding: 10px 8px;
+            /* text-align: left;  REMOVED to allow class-specific alignment */
             text-transform: uppercase;
           }
           .parts-table td {
             border-bottom: 1px solid #eee;
             border-left: 1px solid #eee;
             border-right: 1px solid #eee;
-            padding: 8px 6px;
-            font-size: 10px;
-            vertical-align: top;
+            padding: 10px 8px;
+            font-size: 11px;
+            vertical-align: middle;
           }
+
+          /* Column alignments – apply to both th and td */
           .col-qty { width: 5%; text-align: center; }
           .col-desc { width: 22%; text-align: left; font-weight: bold; }
           .col-source { width: 37%; text-align: left; color: #444; }
-          .col-list { width: 12%; text-align: left; }
-          .col-net { width: 12%; text-align: left; }
+          .col-list { width: 12%; text-align: center; }
+          .col-net { width: 12%; text-align: center; }
           .col-amount { width: 12%; text-align: right; font-weight: bold; }
 
           .bottom-container {
@@ -309,19 +319,16 @@ export const getSparePartsInvoiceHtml = (
               <div class="invoice-title">Invoice</div>
               <div class="meta-grid">
                 <div class="meta-label">Invoice #</div>
-                <div class="meta-value">${escapeHtml(invoice.id)}</div>
+                <div class="meta-value">880601</div>
                 
                 <div class="meta-label">Date</div>
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">Time</div>
-                <div class="meta-value">${timeStr}</div>
+                <div class="meta-value">10:00 AM</div>
 
                 <div class="meta-label">Paid Amount</div>
                 <div class="meta-value">${formatMoney(0)}</div>
-
-                <div class="meta-label">Status</div>
-                <div class="meta-value">Quoted</div>
               </div>
             </div>
           </div>
@@ -344,10 +351,7 @@ export const getSparePartsInvoiceHtml = (
             <div class="panel">
               <div class="panel-header">Ship To</div>
               <div class="panel-body">
-                <div class="customer-name">${escapeHtml(invoice.customerName)}</div>
-                <div style="margin-top: 4px; color: #555;">
-                  ${escapeHtml(invoice.address || "Same as Billing")}
-                </div>
+               
               </div>
             </div>
 

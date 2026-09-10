@@ -48,6 +48,11 @@ async function getAssetBase64(asset: Asset): Promise<string> {
   }
 }
 
+// src/services/PdfService.ts
+
+import { formatCurrencyPdfWithCents } from "@/utils/format";
+// ... other imports ...
+
 export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   // ----- Logo: try company logo, fallback to default app icon -----
   let logoDataUri = "";
@@ -73,7 +78,14 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   const discountAmount = (subtotal * invoice.discount) / 100;
   const total = subtotal + taxAmount - discountAmount;
 
-  const formatMoney = (value: number) => formatCurrencyPdf(value);
+  // ----- Choose formatter based on invoice type -----
+  let formatMoney: (val: number) => string;
+  if (invoice.type === "SPARE_PARTS") {
+    formatMoney = formatCurrencyPdfWithCents; // two decimals
+  } else {
+    formatMoney = formatCurrencyPdf; // whole dollars (original)
+  }
+
   const dateStr = new Date(invoice.date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "2-digit",

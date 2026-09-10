@@ -110,3 +110,12 @@ export const formatPhoneNumber = (digits: string): string => {
 export const stripPhoneFormatting = (phone: string): string => {
   return phone.replace(/\D/g, "");
 };
+
+export const formatCurrencyPdfWithCents = (amount: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};

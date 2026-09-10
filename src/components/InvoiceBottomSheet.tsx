@@ -104,7 +104,6 @@ export default function InvoiceBottomSheet({
           price: 0,
         };
         setItems([newItem]);
-        // NEW: Start with empty price input
         setPriceInputs({ [newItem.id]: "" });
         setTax(0);
         setDiscount(0);
@@ -113,12 +112,10 @@ export default function InvoiceBottomSheet({
   }, [visible, invoiceToEdit]);
 
   const handleSave = () => {
-    // Validate phone: we require at least 10 digits? We'll check if non-empty.
-    const rawPhone = phoneNumber.replace(/\D/g, "");
+    // Phone number is now optional – only validate required fields
     if (
       !companyName.trim() ||
       !customerName.trim() ||
-      rawPhone.length === 0 ||
       !address.trim() ||
       items.some((i) => !i.item.trim() || i.quantity <= 0 || i.price < 0)
     ) {
@@ -127,17 +124,18 @@ export default function InvoiceBottomSheet({
     }
 
     setErrorMessage(null);
+    const rawPhone = phoneNumber.replace(/\D/g, ""); // still stored, but can be empty
     const invoiceData: Invoice = {
       id: invoiceToEdit?.id || generateId(),
       type,
       companyName: companyName.trim(),
       companyLogo,
       customerName: customerName.trim(),
-      phoneNumber: rawPhone, // store only digits
+      phoneNumber: rawPhone, // store only digits, may be empty
       address: address.trim(),
       date: date.toISOString(),
-      companyPhone: companyPhone.trim() || undefined, // if empty, store undefined
-      companyAddress: companyAddress.trim() || undefined, // NEW
+      companyPhone: companyPhone.trim() || undefined,
+      companyAddress: companyAddress.trim() || undefined,
       items: items.map((item) => ({
         ...item,
         id: item.id || generateId(),
@@ -182,7 +180,6 @@ export default function InvoiceBottomSheet({
       price: 0,
     };
     setItems([...items, newItem]);
-    // NEW: Start with empty price input
     setPriceInputs((prev) => ({ ...prev, [newItem.id]: "" }));
   };
 
@@ -346,7 +343,7 @@ export default function InvoiceBottomSheet({
                 style={styles.input}
                 placeholder="أدخل رقم هاتف الشركة"
                 placeholderTextColor="#9CA3AF"
-                value={formatPhoneNumber(companyPhone)} // re-use phone formatter
+                value={formatPhoneNumber(companyPhone)}
                 onChangeText={(text) =>
                   setCompanyPhone(stripPhoneFormatting(text))
                 }
@@ -382,9 +379,9 @@ export default function InvoiceBottomSheet({
               />
             </View>
 
-            {/* Phone Input with formatting */}
+            {/* Phone Input – now optional */}
             <View style={styles.inputGroup}>
-              <Text style={styles.fieldLabel}>رقم الهاتف *</Text>
+              <Text style={styles.fieldLabel}>رقم الهاتف (اختياري)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="(XXX) XXX-XXXX"
@@ -393,7 +390,7 @@ export default function InvoiceBottomSheet({
                 onChangeText={handlePhoneChange}
                 textAlign="right"
                 keyboardType="phone-pad"
-                maxLength={14} // (XXX) XXX-XXXX
+                maxLength={14}
               />
             </View>
 
