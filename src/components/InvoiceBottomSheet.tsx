@@ -39,7 +39,7 @@ export default function InvoiceBottomSheet({
 }: Props) {
   const { addInvoice, updateInvoice, deleteInvoice } = useStore();
 
-  const [type, setType] = useState<InvoiceType>("BODY_SHOP");
+  const [type, setType] = useState<InvoiceType>("ARABIC_INV");
   const [companyName, setCompanyName] = useState("");
   const [companyLogo, setCompanyLogo] = useState<string | undefined>(undefined);
   const [customerName, setCustomerName] = useState("");
@@ -64,7 +64,7 @@ export default function InvoiceBottomSheet({
     if (visible) {
       setErrorMessage(null);
       if (invoiceToEdit) {
-        setType(invoiceToEdit.type || "BODY_SHOP");
+        setType(invoiceToEdit.type || "ARABIC_INV");
         setCompanyName(invoiceToEdit.companyName);
         setCompanyLogo(invoiceToEdit.companyLogo);
         setCompanyAddress(invoiceToEdit.companyAddress || "");
@@ -87,7 +87,7 @@ export default function InvoiceBottomSheet({
         setDiscount(invoiceToEdit.discount);
       } else {
         // Reset for new invoice
-        setType("BODY_SHOP");
+        setType("ARABIC_INV");
         setCompanyName("");
         setCompanyLogo(undefined);
         setCustomerName("");
@@ -271,33 +271,33 @@ export default function InvoiceBottomSheet({
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
-                  type === "BODY_SHOP" && styles.segmentBtnActive,
+                  type === "ARABIC_INV" && styles.segmentBtnActive,
                 ]}
-                onPress={() => setType("BODY_SHOP")}
+                onPress={() => setType("ARABIC_INV")}
               >
                 <Text
                   style={[
                     styles.segmentText,
-                    type === "BODY_SHOP" && styles.segmentTextActive,
+                    type === "ARABIC_INV" && styles.segmentTextActive,
                   ]}
                 >
-                  سمكرة (Body Shop)
+                  بالعربي (Arabic)
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
-                  type === "SPARE_PARTS" && styles.segmentBtnActive,
+                  type === "ENGLISH_INV" && styles.segmentBtnActive,
                 ]}
-                onPress={() => setType("SPARE_PARTS")}
+                onPress={() => setType("ENGLISH_INV")}
               >
                 <Text
                   style={[
                     styles.segmentText,
-                    type === "SPARE_PARTS" && styles.segmentTextActive,
+                    type === "ENGLISH_INV" && styles.segmentTextActive,
                   ]}
                 >
-                  قطع غيار (Spare Parts)
+                  بالإنجليزية (English)
                 </Text>
               </TouchableOpacity>
             </View>

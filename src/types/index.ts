@@ -7,13 +7,14 @@ export type TransactionType =
   | "BILL"
   | "TRANSPORTATION"
   | "ABDU"
+  | "MEDICAL"
   | "PAYROLL"
   | "BANK_FEE"
   | "TRANSFER"
   | "LOAN_GIVEN"
   | "LOAN_RECEIVED";
 // NEW: invoice type
-export type InvoiceType = "BODY_SHOP" | "SPARE_PARTS";
+export type InvoiceType = "ARABIC_INV" | "ENGLISH_INV";
 
 export interface Employee {
   id: string;

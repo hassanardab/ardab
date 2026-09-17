@@ -92,9 +92,11 @@ export default function ProjectDetailScreen() {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "INCOME":
-        return "دخل";
+        return "إستلام مبلغ";
+      case "GIVEAWAY":
+        return "تسليم مبلغ";
       case "EXPENSE":
-        return "مصروف";
+        return "البقالة";
       case "BILL":
         return "فاتورة";
       case "PAYROLL":
@@ -104,9 +106,11 @@ export default function ProjectDetailScreen() {
       case "BANK_FEE":
         return "رسوم تحويل بنكي";
       case "ABDU":
-        return "منصرف عبدالمنعم";
+        return "منصرف خاص ";
+      case "MEDICAL":
+        return "علاجات وأدوية";
       case "TRANSPORTATION":
-        return "ترحيل ومواصلات";
+        return "مواصلات";
       case "LOAN_GIVEN":
         return "قرض مُعطى";
       case "LOAN_RECEIVED":

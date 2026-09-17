@@ -114,6 +114,7 @@ export default function AddTransactionBottomSheet({
               "EXPENSE",
               "INCOME",
               "ABDU",
+              "MEDICAL",
               "PAYROLL",
               "BILL",
               "LOAN_GIVEN",
@@ -134,24 +135,28 @@ export default function AddTransactionBottomSheet({
                   ]}
                 >
                   {type === "INCOME"
-                    ? "دخل"
-                    : type === "EXPENSE"
-                      ? "مصروف"
-                      : type === "PAYROLL"
-                        ? "رواتب"
-                        : type === "ABDU"
-                          ? "منصرف عبدو"
-                          : type === "BANK_FEE"
-                            ? "رسوم تحويل بنكك"
-                            : type === "TRANSPORTATION"
-                              ? "مواصلات وترحيل"
-                              : type === "BILL"
-                                ? "فاتورة"
-                                : type === "LOAN_GIVEN"
-                                  ? "قرض مُعطى"
-                                  : type === "LOAN_RECEIVED"
-                                    ? "قرض مأخوذ"
-                                    : "تحويل"}
+                    ? "إستلام مبلغ"
+                    : type === "GIVEAWAY"
+                      ? "تسليم مبلغ"
+                      : type === "EXPENSE"
+                        ? "البقالة"
+                        : type === "PAYROLL"
+                          ? "رواتب"
+                          : type === "ABDU"
+                            ? "منصرف خاص"
+                            : type === "MEDICAL"
+                              ? "علاجات وأدوية"
+                              : type === "BANK_FEE"
+                                ? "رسوم تحويل بنكك"
+                                : type === "TRANSPORTATION"
+                                  ? "مواصلات"
+                                  : type === "BILL"
+                                    ? "فاتورة"
+                                    : type === "LOAN_GIVEN"
+                                      ? "قرض مُعطى"
+                                      : type === "LOAN_RECEIVED"
+                                        ? "قرض مأخوذ"
+                                        : "سحب كاش/إبداع بنكي"}
                 </Text>
               </TouchableOpacity>
             ))}

@@ -59,7 +59,9 @@ export default function InvoicesScreen() {
             <Text style={styles.companyName}>{item.companyName}</Text>
             <View style={styles.row}>
               <Text style={styles.typeBadge}>
-                {item.type === "BODY_SHOP" ? "سمكرة" : "قطع غيار"}
+                {item.type === "ARABIC_INV"
+                  ? "بالعربيه (Arabic)"
+                  : "بالإنجليزية (English)"}
               </Text>
               <Text style={styles.date}>{formatDate(item.date)}</Text>
               <Text style={styles.total}>

@@ -5,8 +5,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { generateFinancialReport } from "../services/PdfService";
-import { useStore } from "../store/useStore";
+import { generateFinancialReport } from "../src/services/PdfService";
+import { useStore } from "../src/store/useStore";
 
 export default function ReportsScreen() {
   const { projects, transactions } = useStore();

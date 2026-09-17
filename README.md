@@ -84,17 +84,34 @@ adb reverse tcp:8081 tcp:8081
 [x] we can edit the project when hold
 [x] we have an invoice form
 [x] pdf invoice
-[_] we have loans on form
-[_] we have loans on pdf
+[x] we have loans on form
+[x] we have loans on pdf
 [x] on hold we can delete from the edit form
 
 ## v2.6
 
-[] we can see the phone top bar
-[] nas new request for invoice
+[x] we can see the phone top bar
+[x] nas new request for invoice
 [x] the invoice has two types body shop and spare parts this should be on the invoice type and each should have it on pdf html design this current html should be for the body shop, so on the PDF service make it changes based on the invoce type.
 
 [x] ONA the main dashboard we have the day and date
 [x] add the messaging feature UI
 
 ## v2.7
+
+[x] invoice has an Arabic version
+
+## v2.8
+
+[x] minimum main screen
+
+---
+
+## v2.9
+
+[x] if we gain 25,000,000 and we are 4 two on field and two away how much the profit split will be if 2/3 for the in field and 1/3 for the away for the profit whIle the capital is split eequally per each.
+[x] adding a Medical expenses
+
+---
+
+## v2.10

@@ -7,7 +7,7 @@
 
 import { formatPhoneNumber } from "../../utils/format";
 
-export const getSparePartsInvoiceHtml = (
+export const getArabicInvoiceHtml = (
   invoice: any,
   logoDataUri: string,
   formatMoney: (val: number) => string,
@@ -48,7 +48,7 @@ export const getSparePartsInvoiceHtml = (
 
   return `
     <!DOCTYPE html>
-    <html>
+    <html dir="rtl" lang="ar">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -117,6 +117,7 @@ export const getSparePartsInvoiceHtml = (
           }
           .company-details .company-address,
           .company-details .company-phone {
+            text-align: right;
             font-size: 10px;
             color: #555;
           }
@@ -126,6 +127,7 @@ export const getSparePartsInvoiceHtml = (
             text-align: right;
           }
           .invoice-title {
+          text-align: left;
             font-size: 26px;
             font-weight: 900;
             color: #000;
@@ -309,27 +311,25 @@ export const getSparePartsInvoiceHtml = (
               }
               <div class="company-details">
                 <div class="company-name">${escapeHtml(invoice.companyName)}</div>
-                <div>Spare Parts Department & Services</div>
                 ${invoice.companyAddress ? `<div class="company-address">${escapeHtml(invoice.companyAddress)}</div>` : ""}
-                ${formattedCompanyPhone ? `<div class="company-phone">Phone: ${formattedCompanyPhone}</div>` : ""}
+                ${formattedCompanyPhone ? `<div class="company-phone">${formattedCompanyPhone}</div>` : ""}
+               
               </div>
             </div>
 
             <div class="invoice-meta">
-              <div class="invoice-title">Invoice</div>
+              <div class="invoice-title">فاتورة مبيعات</div>
               <div class="meta-grid">
-                <div class="meta-label">Invoice #</div>
+                <div class="meta-label">رقم الفاتورة #</div>
                 <div class="meta-value">880601</div>
                 
-                <div class="meta-label">Date</div>
+                <div class="meta-label">التاريخ</div>
                 <div class="meta-value">${dateStr}</div>
                 
-                <div class="meta-label">Time</div>
+                <div class="meta-label">الوقت</div>
                 <div class="meta-value">10:00 AM</div>
 
-                <div class="meta-label">Paid Amount</div>
-                <div class="meta-value">${formatMoney(0)}</div>
-              </div>
+            </div>
             </div>
           </div>
 
@@ -337,7 +337,7 @@ export const getSparePartsInvoiceHtml = (
           <div class="panels-wrapper">
             <!-- Billing Box -->
             <div class="panel">
-              <div class="panel-header">Bill To</div>
+              <div class="panel-header">العميل</div>
               <div class="panel-body">
                 <div class="customer-name">${escapeHtml(invoice.customerName)}</div>
                 <div>${formattedCustomerPhone}</div>
@@ -349,7 +349,7 @@ export const getSparePartsInvoiceHtml = (
 
             <!-- Shipping Box -->
             <div class="panel">
-              <div class="panel-header">Ship To</div>
+              <div class="panel-header">عنوان الشحن</div>
               <div class="panel-body">
                
               </div>
@@ -357,22 +357,22 @@ export const getSparePartsInvoiceHtml = (
 
             <!-- Order Details Box -->
             <div class="panel">
-              <div class="panel-header">Invoice Details</div>
+              <div class="panel-header">تفاصيل الفاتورة</div>
               <div class="panel-body order-details-grid">
-                <div class="od-label">Sale Type:</div>
-                <div class="od-value">Wholesale</div>
+                <div class="od-label">نوع البيع:</div>
+                <div class="od-value">جملة</div>
                 
-                <div class="od-label">PO No:</div>
+                <div class="od-label">رقم أمر الشراء:</div>
                 <div class="od-value">-</div>
                 
-                <div class="od-label">Sales Rep:</div>
-                <div class="od-value">SYSTEM</div>
+                <div class="od-label">تم إمساء الفاتورة بواسطة:</div>
+                <div class="od-value">النظام</div>
                 
-                <div class="od-label">Terms:</div>
-                <div class="od-value">Due on Receipt</div>
+                <div class="od-label">االنود والأحكام:</div>
+                <div class="od-value">الدفع مقدما</div>
                 
-                <div class="od-label">Payment:</div>
-                <div class="od-value">None</div>
+                <div class="od-label">مبلغ مدفوع مسبقا:</div>
+                <div class="od-value">لا يوجد</div>
               </div>
             </div>
           </div>
@@ -382,11 +382,11 @@ export const getSparePartsInvoiceHtml = (
             <thead>
               <tr>
                 <th class="col-qty">#</th>
-                <th class="col-desc">Part</th>
-                <th class="col-source">Description</th>
-                <th class="col-list">Qty</th>
-                <th class="col-net">Unit Price</th>
-                <th class="col-amount">Total</th>
+                <th class="col-desc">البيان</th>
+                <th class="col-source">التفاصيل</th>
+                <th class="col-list">الكمية</th>
+                <th class="col-net">سعر الوحدة</th>
+                <th class="col-amount">الإجمالي</th>
               </tr>
             </thead>
             <tbody>
@@ -399,30 +399,30 @@ export const getSparePartsInvoiceHtml = (
             <div class="bottom-left-cell">
             
               <div class="signature-area">
-                Authorized Signature & Date
+               المفوض بالتوفيع و التاريخ
               </div>
             </div>
             
             <div class="bottom-right-cell">
               <table class="summary-table">
                 <tr>
-                  <td>Subtotal</td>
+                  <td>الصافي</td>
                   <td class="val-col">${formatMoney(subtotal)}</td>
                 </tr>
                 <tr>
-                  <td>Sales Tax ${invoice.tax > 0 ? `(${invoice.tax}%)` : ""}</td>
+                  <td>ضريبة القيمة المضافة ${invoice.tax > 0 ? `(${invoice.tax}%)` : ""}</td>
                   <td class="val-col">${formatMoney(taxAmount)}</td>
                 </tr>
                 ${
                   invoice.discount > 0
                     ? `<tr>
-                         <td>Discount (${invoice.discount}%)</td>
+                         <td>خصم (${invoice.discount}%)</td>
                          <td class="val-col">-${formatMoney(discountAmount)}</td>
                        </tr>`
                     : ""
                 }
                 <tr class="total-row">
-                  <td>Total</td>
+                  <td>المجموع</td>
                   <td class="val-col">${formatMoney(total)}</td>
                 </tr>
               </table>

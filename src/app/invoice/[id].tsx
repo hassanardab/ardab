@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -45,21 +45,29 @@ export default function InvoicePreviewScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <WebView
-        source={{ html: htmlContent }}
-        style={styles.webview}
-        originWhitelist={["*"]}
+    <>
+      <Stack.Screen
+        options={{
+          headerTitleAlign: "center",
+          headerTitle: "الفاتورة",
+        }}
       />
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.exportBtn}
-          onPress={() => exportInvoicePdf(invoice)}
-        >
-          <Text style={styles.exportBtnText}>تصدير PDF</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <WebView
+          source={{ html: htmlContent }}
+          style={styles.webview}
+          originWhitelist={["*"]}
+        />
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.exportBtn}
+            onPress={() => exportInvoicePdf(invoice)}
+          >
+            <Text style={styles.exportBtnText}>تصدير PDF</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </>
   );
 }
 
