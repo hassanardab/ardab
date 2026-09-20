@@ -1,8 +1,10 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Image,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,13 @@ import { useStore } from "../store/useStore";
 import { Project } from "../types";
 import { formatCurrency } from "../utils/format";
 
+type DateFilterType =
+  | "ALL"
+  | "THIS_MONTH"
+  | "LAST_MONTH"
+  | "THIS_YEAR"
+  | "CUSTOM";
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { projects, transactions, addProject, updateProject } = useStore();
@@ -26,6 +35,14 @@ export default function DashboardScreen() {
     null,
   );
 
+  // ---------- Date range filter state ----------
+  const [dateFilter, setDateFilter] = useState<DateFilterType>("ALL");
+  const [customStart, setCustomStart] = useState<Date | null>(null);
+  const [customEnd, setCustomEnd] = useState<Date | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // ---------- Handlers ----------
   const handleCreateProject = () => {
     if (!newProjectName) return;
     addProject({
@@ -56,26 +73,137 @@ export default function DashboardScreen() {
     setIsModalVisible(true);
   };
 
+  // ---------- Date range helpers ----------
+  const getRange = (): { start: number; end: number } => {
+    const now = new Date();
+    switch (dateFilter) {
+      case "THIS_MONTH":
+        return {
+          start: new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
+          end: new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999,
+          ).getTime(),
+        };
+      case "LAST_MONTH":
+        return {
+          start: new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime(),
+          end: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            0,
+            23,
+            59,
+            59,
+            999,
+          ).getTime(),
+        };
+      case "THIS_YEAR":
+        return {
+          start: new Date(now.getFullYear(), 0, 1).getTime(),
+          end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime(),
+        };
+      case "CUSTOM": {
+        const start = customStart ? customStart.getTime() : 0;
+        const end = customEnd
+          ? new Date(
+              customEnd.getFullYear(),
+              customEnd.getMonth(),
+              customEnd.getDate(),
+              23,
+              59,
+              59,
+              999,
+            ).getTime()
+          : Infinity;
+        return { start, end };
+      }
+      case "ALL":
+      default:
+        return { start: 0, end: Infinity };
+    }
+  };
+
+  // Compute all project balances in one pass, keyed by projectId
+  const projectBalances = useMemo(() => {
+    const { start, end } = getRange();
+    const result: Record<
+      string,
+      { cash: number; bank: number; loanBalance: number }
+    > = {};
+
+    projects.forEach((project) => {
+      let cash = project.initialCash;
+      let bank = project.initialBank;
+      let loanBalance = 0;
+
+      transactions
+        .filter((t) => t.projectId === project.id)
+        .forEach((t) => {
+          const ts = new Date(t.date).getTime();
+          if (ts < start || ts > end) return;
+
+          if (t.type === "TRANSFER") {
+            if (t.method === "BANK") {
+              // Deposit cash → bank
+              bank += t.amount;
+              cash -= t.amount;
+            } else {
+              // Withdraw bank → cash
+              cash += t.amount;
+              bank -= t.amount;
+            }
+          } else {
+            const isInflow = t.type === "INCOME" || t.type === "LOAN_RECEIVED";
+            const delta = isInflow ? t.amount : -t.amount;
+            if (t.method === "CASH") cash += delta;
+            else bank += delta;
+          }
+
+          if (t.type === "LOAN_RECEIVED") loanBalance += t.amount;
+          if (t.type === "LOAN_GIVEN") loanBalance -= t.amount;
+        });
+
+      result[project.id] = { cash, bank, loanBalance };
+    });
+
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, transactions, dateFilter, customStart, customEnd]);
+
+  // Formatted "current range" text
+  const periodLabel = useMemo(() => {
+    if (dateFilter === "ALL") return "كل الفترات";
+    if (dateFilter === "THIS_MONTH") return "هذا الشهر";
+    if (dateFilter === "LAST_MONTH") return "الشهر الماضي";
+    if (dateFilter === "THIS_YEAR") return "هذا العام";
+    const s = customStart ? customStart.toISOString().split("T")[0] : "...";
+    const e = customEnd ? customEnd.toISOString().split("T")[0] : "...";
+    return `${s} ← ${e}`;
+  }, [dateFilter, customStart, customEnd]);
+
+  // ---------- Date pickers ----------
+  const onStartChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android") setShowStartPicker(false);
+    if (selectedDate) setCustomStart(selectedDate);
+  };
+
+  const onEndChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android") setShowEndPicker(false);
+    if (selectedDate) setCustomEnd(selectedDate);
+  };
+
   // Format today's date in Arabic
   const formattedDate = new Intl.DateTimeFormat("ar-EG", {
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date());
-
-  // Compute net loan balance for a project
-  const getLoanBalance = (projectId: string): number => {
-    const projectTransactions = transactions.filter(
-      (t) => t.projectId === projectId,
-    );
-    const totalReceived = projectTransactions
-      .filter((t) => t.type === "LOAN_RECEIVED")
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalGiven = projectTransactions
-      .filter((t) => t.type === "LOAN_GIVEN")
-      .reduce((sum, t) => sum + t.amount, 0);
-    return totalReceived - totalGiven;
-  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -91,8 +219,126 @@ export default function DashboardScreen() {
         />
       </View>
 
+      {/* ====== DATE RANGE FILTER ====== */}
+      <View style={styles.filterCard}>
+        <View style={styles.filterHeaderRow}>
+          <Text style={styles.filterPeriodLabel}>{periodLabel}</Text>
+          <Text style={styles.filterTitle}>الفترة الزمنية</Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChipsScroll}
+        >
+          {(
+            [
+              { id: "ALL", label: "الكل" },
+              { id: "THIS_MONTH", label: "هذا الشهر" },
+              { id: "LAST_MONTH", label: "الشهر الماضي" },
+              { id: "THIS_YEAR", label: "هذا العام" },
+              { id: "CUSTOM", label: "مخصص" },
+            ] as { id: DateFilterType; label: string }[]
+          ).map((f) => (
+            <TouchableOpacity
+              key={f.id}
+              style={[
+                styles.filterChip,
+                dateFilter === f.id && styles.filterChipActive,
+              ]}
+              onPress={() => setDateFilter(f.id)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  dateFilter === f.id && styles.filterChipTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {dateFilter === "CUSTOM" && (
+          <View style={styles.customRangeRow}>
+            <TouchableOpacity
+              style={styles.dateBtn}
+              onPress={() => setShowStartPicker(true)}
+            >
+              <Text style={styles.dateBtnLabel}>من</Text>
+              <Text style={styles.dateBtnValue}>
+                {customStart ? customStart.toISOString().split("T")[0] : "اختر"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dateBtn}
+              onPress={() => setShowEndPicker(true)}
+            >
+              <Text style={styles.dateBtnLabel}>إلى</Text>
+              <Text style={styles.dateBtnValue}>
+                {customEnd ? customEnd.toISOString().split("T")[0] : "اختر"}
+              </Text>
+            </TouchableOpacity>
+
+            {(customStart || customEnd) && (
+              <TouchableOpacity
+                style={styles.clearRangeBtn}
+                onPress={() => {
+                  setCustomStart(null);
+                  setCustomEnd(null);
+                }}
+              >
+                <Text style={styles.clearRangeBtnText}>مسح</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {showStartPicker && (
+          <DateTimePicker
+            value={customStart || new Date()}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onStartChange}
+          />
+        )}
+        {showEndPicker && (
+          <DateTimePicker
+            value={customEnd || new Date()}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onEndChange}
+          />
+        )}
+
+        {Platform.OS === "ios" && showStartPicker && (
+          <TouchableOpacity
+            style={styles.iosDoneBtn}
+            onPress={() => setShowStartPicker(false)}
+          >
+            <Text style={styles.iosDoneBtnText}>تم</Text>
+          </TouchableOpacity>
+        )}
+        {Platform.OS === "ios" && showEndPicker && (
+          <TouchableOpacity
+            style={styles.iosDoneBtn}
+            onPress={() => setShowEndPicker(false)}
+          >
+            <Text style={styles.iosDoneBtnText}>تم</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* ====== PROJECTS ====== */}
       {projects.map((project) => {
-        const loanBalance = getLoanBalance(project.id);
+        const b = projectBalances[project.id] ?? {
+          cash: project.currentCash,
+          bank: project.currentBank,
+          loanBalance: 0,
+        };
         return (
           <TouchableOpacity
             key={project.id}
@@ -105,15 +351,11 @@ export default function DashboardScreen() {
             <View style={styles.balanceRow}>
               <View style={styles.balanceBlock}>
                 <Text style={styles.label}>الرصيد النقدي</Text>
-                <Text style={styles.cashAmount}>
-                  {formatCurrency(project.currentCash)}
-                </Text>
+                <Text style={styles.cashAmount}>{formatCurrency(b.cash)}</Text>
               </View>
               <View style={styles.balanceBlock}>
                 <Text style={styles.label}>الرصيد البنكي</Text>
-                <Text style={styles.bankAmount}>
-                  {formatCurrency(project.currentBank)}
-                </Text>
+                <Text style={styles.bankAmount}>{formatCurrency(b.bank)}</Text>
               </View>
             </View>
 
@@ -123,10 +365,12 @@ export default function DashboardScreen() {
               <Text
                 style={[
                   styles.loanAmount,
-                  loanBalance >= 0 ? styles.positiveLoan : styles.negativeLoan,
+                  b.loanBalance >= 0
+                    ? styles.positiveLoan
+                    : styles.negativeLoan,
                 ]}
               >
-                {formatCurrency(loanBalance)}
+                {formatCurrency(b.loanBalance)}
               </Text>
             </View>
 
@@ -242,6 +486,116 @@ const styles = StyleSheet.create({
     height: 45,
     borderRadius: 10,
   },
+
+  // ====== DATE FILTER STYLES ======
+  filterCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  filterHeaderRow: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  filterTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  filterPeriodLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6b7280",
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  filterChipsScroll: {
+    flexDirection: "row-reverse",
+    gap: 8,
+    paddingBottom: 2,
+  },
+  filterChip: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  filterChipActive: {
+    backgroundColor: "#111827",
+    borderColor: "#111827",
+  },
+  filterChipText: {
+    color: "#4b5563",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  filterChipTextActive: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  customRangeRow: {
+    flexDirection: "row-reverse",
+    gap: 8,
+    marginTop: 12,
+    alignItems: "stretch",
+  },
+  dateBtn: {
+    flex: 1,
+    backgroundColor: "#f9fafb",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: "center",
+  },
+  dateBtnLabel: {
+    fontSize: 10,
+    color: "#6b7280",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  dateBtnValue: {
+    fontSize: 13,
+    color: "#111827",
+    fontWeight: "700",
+  },
+  clearRangeBtn: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "#fee2e2",
+  },
+  clearRangeBtnText: {
+    color: "#dc2626",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  iosDoneBtn: {
+    marginTop: 8,
+    backgroundColor: "#f3f4f6",
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  iosDoneBtnText: {
+    color: "#111827",
+    fontWeight: "700",
+  },
+
+  // ====== CARDS ======
   card: {
     backgroundColor: "white",
     padding: 16,
@@ -280,8 +634,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  positiveLoan: { color: "#8B5CF6" }, // purple
-  negativeLoan: { color: "#EF4444" }, // red (if you owe more than you received)
+  positiveLoan: { color: "#8B5CF6" },
+  negativeLoan: { color: "#EF4444" },
   actionBtn: {
     backgroundColor: "#f3f4f6",
     padding: 12,
