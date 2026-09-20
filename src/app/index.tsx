@@ -2,6 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
+  Alert,
   Image,
   Modal,
   Platform,
@@ -26,7 +27,8 @@ type DateFilterType =
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { projects, transactions, addProject, updateProject } = useStore();
+  const { projects, transactions, addProject, updateProject, removeProject } =
+    useStore();
   const [newProjectName, setNewProjectName] = useState("");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editName, setEditName] = useState("");
@@ -66,6 +68,35 @@ export default function DashboardScreen() {
       setEditingProject(null);
       setEditName("");
     }
+  };
+
+  // ---------- Delete project (with confirmation) ----------
+  const handleDeleteProject = () => {
+    if (!editingProject) return;
+    const projectToDelete = editingProject;
+    const txCount = transactions.filter(
+      (t) => t.projectId === projectToDelete.id,
+    ).length;
+
+    Alert.alert(
+      "حذف المشروع",
+      `هل أنت متأكد من حذف "${projectToDelete.name}"؟${
+        txCount > 0 ? `\nسيتم حذف ${txCount} معاملة مرتبطة به.` : ""
+      }`,
+      [
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: "حذف",
+          style: "destructive",
+          onPress: () => {
+            removeProject(projectToDelete.id);
+            setEditingProject(null);
+            setEditName("");
+          },
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   const openTransactionModal = (projectId: string) => {
@@ -150,11 +181,9 @@ export default function DashboardScreen() {
 
           if (t.type === "TRANSFER") {
             if (t.method === "BANK") {
-              // Deposit cash → bank
               bank += t.amount;
               cash -= t.amount;
             } else {
-              // Withdraw bank → cash
               cash += t.amount;
               bank -= t.amount;
             }
@@ -421,7 +450,7 @@ export default function DashboardScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.editModalContent}>
-            <Text style={styles.modalHeader}>العديل على المشروع </Text>
+            <Text style={styles.modalHeader}>التعديل على المشروع</Text>
             <TextInput
               style={styles.input}
               placeholder="اسم المشروع"
@@ -430,6 +459,8 @@ export default function DashboardScreen() {
               textAlign="right"
               autoFocus
             />
+
+            {/* Save / Cancel */}
             <View style={styles.editModalButtons}>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.saveBtn]}
@@ -447,6 +478,14 @@ export default function DashboardScreen() {
                 <Text style={styles.cancelBtnText}>إلغاء</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Delete project (full-width, destructive) */}
+            <TouchableOpacity
+              style={styles.deleteProjectBtn}
+              onPress={handleDeleteProject}
+            >
+              <Text style={styles.deleteProjectBtnText}>حذف المشروع</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -719,5 +758,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#64748B",
     marginBottom: 2,
+  },
+
+  // ====== DELETE PROJECT BUTTON ======
+  deleteProjectBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  deleteProjectBtnText: {
+    color: "#EF4444",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

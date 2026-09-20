@@ -22,6 +22,7 @@ interface AppState {
     id: string,
     updates: Partial<Omit<Project, "id" | "createdAt">>,
   ) => void;
+  removeProject: (projectId: string) => void;
   removeTransaction: (transactionId: string) => void;
   updateTransaction: (transaction: Transaction) => void;
   addEmployee: (employee: Employee) => void;
@@ -150,7 +151,13 @@ export const useStore = create<AppState>()(
             p.id === id ? { ...p, ...updates } : p,
           ),
         })),
-
+      removeProject: (projectId) =>
+        set((state) => ({
+          projects: state.projects.filter((p) => p.id !== projectId),
+          transactions: state.transactions.filter(
+            (t) => t.projectId !== projectId,
+          ),
+        })),
       addTransaction: (transaction) =>
         set((state) => {
           const updatedProjects = state.projects.map((proj) =>
