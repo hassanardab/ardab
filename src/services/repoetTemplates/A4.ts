@@ -38,7 +38,7 @@ async function getAssetBase64(asset: Asset): Promise<string> {
 export const getArFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
-  periodLabel: string = "تاريـخ المشـروع بالكامل",
+  periodLabel: string = "تاريخ المشروع بالكامل",
 ) => {
   let logoUri = "";
 
@@ -113,7 +113,9 @@ export const getArFinancialReportHtml = async (
     }
   };
 
+  // NEW: filter out categories with 0 amount so they don't appear in the report
   const categoryRows = Object.entries(categoryTotals)
+    .filter(([, amount]) => amount !== 0)
     .map(
       ([type, amount]) => `
       <tr>

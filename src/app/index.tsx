@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -235,266 +236,290 @@ export default function DashboardScreen() {
   }).format(new Date());
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Top Header Bar with Date */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerTextGroup}>
-          <Text style={styles.dateText}>{formattedDate}</Text>
-          <Text style={styles.header}>المشاريع النشطة</Text>
-        </View>
-        <Image
-          source={require("@/assets/images/icon.png")}
-          style={styles.logo}
-        />
-      </View>
-
-      {/* ====== DATE RANGE FILTER ====== */}
-      <View style={styles.filterCard}>
-        <View style={styles.filterHeaderRow}>
-          <Text style={styles.filterPeriodLabel}>{periodLabel}</Text>
-          <Text style={styles.filterTitle}>الفترة الزمنية</Text>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterChipsScroll}
-        >
-          {(
-            [
-              { id: "ALL", label: "الكل" },
-              { id: "THIS_MONTH", label: "هذا الشهر" },
-              { id: "LAST_MONTH", label: "الشهر الماضي" },
-              { id: "THIS_YEAR", label: "هذا العام" },
-              { id: "CUSTOM", label: "مخصص" },
-            ] as { id: DateFilterType; label: string }[]
-          ).map((f) => (
-            <TouchableOpacity
-              key={f.id}
-              style={[
-                styles.filterChip,
-                dateFilter === f.id && styles.filterChipActive,
-              ]}
-              onPress={() => setDateFilter(f.id)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  dateFilter === f.id && styles.filterChipTextActive,
-                ]}
-              >
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {dateFilter === "CUSTOM" && (
-          <View style={styles.customRangeRow}>
-            <TouchableOpacity
-              style={styles.dateBtn}
-              onPress={() => setShowStartPicker(true)}
-            >
-              <Text style={styles.dateBtnLabel}>من</Text>
-              <Text style={styles.dateBtnValue}>
-                {customStart ? customStart.toISOString().split("T")[0] : "اختر"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.dateBtn}
-              onPress={() => setShowEndPicker(true)}
-            >
-              <Text style={styles.dateBtnLabel}>إلى</Text>
-              <Text style={styles.dateBtnValue}>
-                {customEnd ? customEnd.toISOString().split("T")[0] : "اختر"}
-              </Text>
-            </TouchableOpacity>
-
-            {(customStart || customEnd) && (
-              <TouchableOpacity
-                style={styles.clearRangeBtn}
-                onPress={() => {
-                  setCustomStart(null);
-                  setCustomEnd(null);
-                }}
-              >
-                <Text style={styles.clearRangeBtnText}>مسح</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {showStartPicker && (
-          <DateTimePicker
-            value={customStart || new Date()}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={onStartChange}
-          />
-        )}
-        {showEndPicker && (
-          <DateTimePicker
-            value={customEnd || new Date()}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={onEndChange}
-          />
-        )}
-
-        {Platform.OS === "ios" && showStartPicker && (
-          <TouchableOpacity
-            style={styles.iosDoneBtn}
-            onPress={() => setShowStartPicker(false)}
-          >
-            <Text style={styles.iosDoneBtnText}>تم</Text>
-          </TouchableOpacity>
-        )}
-        {Platform.OS === "ios" && showEndPicker && (
-          <TouchableOpacity
-            style={styles.iosDoneBtn}
-            onPress={() => setShowEndPicker(false)}
-          >
-            <Text style={styles.iosDoneBtnText}>تم</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* ====== PROJECTS ====== */}
-      {projects.map((project) => {
-        const b = projectBalances[project.id] ?? {
-          cash: project.currentCash,
-          bank: project.currentBank,
-          loanBalance: 0,
-        };
-        return (
-          <TouchableOpacity
-            key={project.id}
-            style={styles.card}
-            onPress={() => router.push(`/project/${project.id}`)}
-            onLongPress={() => handleEditProject(project)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cardTitle}>{project.name}</Text>
-            <View style={styles.balanceRow}>
-              <View style={styles.balanceBlock}>
-                <Text style={styles.label}>الرصيد النقدي</Text>
-                <Text style={styles.cashAmount}>{formatCurrency(b.cash)}</Text>
-              </View>
-              <View style={styles.balanceBlock}>
-                <Text style={styles.label}>الرصيد البنكي</Text>
-                <Text style={styles.bankAmount}>{formatCurrency(b.bank)}</Text>
-              </View>
-            </View>
-
-            {/* Loan Balance Row */}
-            <View style={styles.loanRow}>
-              <Text style={styles.label}>صافي القروض</Text>
-              <Text
-                style={[
-                  styles.loanAmount,
-                  b.loanBalance >= 0
-                    ? styles.positiveLoan
-                    : styles.negativeLoan,
-                ]}
-              >
-                {formatCurrency(b.loanBalance)}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                openTransactionModal(project.id);
-              }}
-            >
-              <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        );
-      })}
-
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="اسم المشروع الجديد"
-          value={newProjectName}
-          onChangeText={setNewProjectName}
-          textAlign="right"
-        />
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={handleCreateProject}
-        >
-          <Text style={styles.primaryBtnText}>إنشاء مشروع</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Transaction Modal */}
-      {selectedProjectId && (
-        <AddTransactionBottomSheet
-          projectId={selectedProjectId}
-          visible={isModalVisible}
-          onClose={() => setIsModalVisible(false)}
-        />
-      )}
-
-      {/* Edit Project Modal */}
-      <Modal
-        visible={!!editingProject}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditingProject(null)}
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.editModalContent}>
-            <Text style={styles.modalHeader}>التعديل على المشروع</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="اسم المشروع"
-              value={editName}
-              onChangeText={setEditName}
-              textAlign="right"
-              autoFocus
-            />
+        {/* Top Header Bar with Date */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTextGroup}>
+            <Text style={styles.dateText}>{formattedDate}</Text>
+            <Text style={styles.header}>المشاريع النشطة</Text>
+          </View>
+          <Image
+            source={require("@/assets/images/icon.png")}
+            style={styles.logo}
+          />
+        </View>
 
-            {/* Save / Cancel */}
-            <View style={styles.editModalButtons}>
+        {/* ====== DATE RANGE FILTER ====== */}
+        <View style={styles.filterCard}>
+          <View style={styles.filterHeaderRow}>
+            <Text style={styles.filterPeriodLabel}>{periodLabel}</Text>
+            <Text style={styles.filterTitle}>الفترة الزمنية</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterChipsScroll}
+          >
+            {(
+              [
+                { id: "ALL", label: "الكل" },
+                { id: "THIS_MONTH", label: "هذا الشهر" },
+                { id: "LAST_MONTH", label: "الشهر الماضي" },
+                { id: "THIS_YEAR", label: "هذا العام" },
+                { id: "CUSTOM", label: "مخصص" },
+              ] as { id: DateFilterType; label: string }[]
+            ).map((f) => (
               <TouchableOpacity
-                style={[styles.modalBtn, styles.saveBtn]}
-                onPress={saveEdit}
+                key={f.id}
+                style={[
+                  styles.filterChip,
+                  dateFilter === f.id && styles.filterChipActive,
+                ]}
+                onPress={() => setDateFilter(f.id)}
+                activeOpacity={0.8}
               >
-                <Text style={styles.saveBtnText}>حفظ</Text>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    dateFilter === f.id && styles.filterChipTextActive,
+                  ]}
+                >
+                  {f.label}
+                </Text>
               </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {dateFilter === "CUSTOM" && (
+            <View style={styles.customRangeRow}>
               <TouchableOpacity
-                style={[styles.modalBtn, styles.cancelBtn]}
-                onPress={() => {
-                  setEditingProject(null);
-                  setEditName("");
+                style={styles.dateBtn}
+                onPress={() => setShowStartPicker(true)}
+              >
+                <Text style={styles.dateBtnLabel}>من</Text>
+                <Text style={styles.dateBtnValue}>
+                  {customStart
+                    ? customStart.toISOString().split("T")[0]
+                    : "اختر"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateBtn}
+                onPress={() => setShowEndPicker(true)}
+              >
+                <Text style={styles.dateBtnLabel}>إلى</Text>
+                <Text style={styles.dateBtnValue}>
+                  {customEnd ? customEnd.toISOString().split("T")[0] : "اختر"}
+                </Text>
+              </TouchableOpacity>
+
+              {(customStart || customEnd) && (
+                <TouchableOpacity
+                  style={styles.clearRangeBtn}
+                  onPress={() => {
+                    setCustomStart(null);
+                    setCustomEnd(null);
+                  }}
+                >
+                  <Text style={styles.clearRangeBtnText}>مسح</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {showStartPicker && (
+            <DateTimePicker
+              value={customStart || new Date()}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={onStartChange}
+            />
+          )}
+          {showEndPicker && (
+            <DateTimePicker
+              value={customEnd || new Date()}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={onEndChange}
+            />
+          )}
+
+          {Platform.OS === "ios" && showStartPicker && (
+            <TouchableOpacity
+              style={styles.iosDoneBtn}
+              onPress={() => setShowStartPicker(false)}
+            >
+              <Text style={styles.iosDoneBtnText}>تم</Text>
+            </TouchableOpacity>
+          )}
+          {Platform.OS === "ios" && showEndPicker && (
+            <TouchableOpacity
+              style={styles.iosDoneBtn}
+              onPress={() => setShowEndPicker(false)}
+            >
+              <Text style={styles.iosDoneBtnText}>تم</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ====== PROJECTS ====== */}
+        {projects.map((project) => {
+          const b = projectBalances[project.id] ?? {
+            cash: project.currentCash,
+            bank: project.currentBank,
+            loanBalance: 0,
+          };
+          return (
+            <TouchableOpacity
+              key={project.id}
+              style={styles.card}
+              onPress={() => router.push(`/project/${project.id}`)}
+              onLongPress={() => handleEditProject(project)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cardTitle}>{project.name}</Text>
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceBlock}>
+                  <Text style={styles.label}>الرصيد النقدي</Text>
+                  <Text style={styles.cashAmount}>
+                    {formatCurrency(b.cash)}
+                  </Text>
+                </View>
+                <View style={styles.balanceBlock}>
+                  <Text style={styles.label}>الرصيد البنكي</Text>
+                  <Text style={styles.bankAmount}>
+                    {formatCurrency(b.bank)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Loan Balance Row */}
+              <View style={styles.loanRow}>
+                <Text style={styles.label}>صافي القروض</Text>
+                <Text
+                  style={[
+                    styles.loanAmount,
+                    b.loanBalance >= 0
+                      ? styles.positiveLoan
+                      : styles.negativeLoan,
+                  ]}
+                >
+                  {formatCurrency(b.loanBalance)}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  openTransactionModal(project.id);
                 }}
               >
-                <Text style={styles.cancelBtnText}>إلغاء</Text>
+                <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          );
+        })}
+
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="اسم المشروع الجديد"
+            value={newProjectName}
+            onChangeText={setNewProjectName}
+            textAlign="right"
+          />
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={handleCreateProject}
+          >
+            <Text style={styles.primaryBtnText}>إنشاء مشروع</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Transaction Modal */}
+        {selectedProjectId && (
+          <AddTransactionBottomSheet
+            projectId={selectedProjectId}
+            visible={isModalVisible}
+            onClose={() => setIsModalVisible(false)}
+          />
+        )}
+
+        {/* Edit Project Modal */}
+        <Modal
+          visible={!!editingProject}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingProject(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContent}>
+              <Text style={styles.modalHeader}>التعديل على المشروع</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="اسم المشروع"
+                value={editName}
+                onChangeText={setEditName}
+                textAlign="right"
+                autoFocus
+              />
+
+              {/* Save / Cancel */}
+              <View style={styles.editModalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.saveBtn]}
+                  onPress={saveEdit}
+                >
+                  <Text style={styles.saveBtnText}>حفظ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.cancelBtn]}
+                  onPress={() => {
+                    setEditingProject(null);
+                    setEditName("");
+                  }}
+                >
+                  <Text style={styles.cancelBtnText}>إلغاء</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Delete project (full-width, destructive) */}
+              <TouchableOpacity
+                style={styles.deleteProjectBtn}
+                onPress={handleDeleteProject}
+              >
+                <Text style={styles.deleteProjectBtnText}>حذف المشروع</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Delete project (full-width, destructive) */}
-            <TouchableOpacity
-              style={styles.deleteProjectBtn}
-              onPress={handleDeleteProject}
-            >
-              <Text style={styles.deleteProjectBtnText}>حذف المشروع</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  // NEW: outer KeyboardAvoidingView wrapper
+  keyboardContainer: { flex: 1, backgroundColor: "#f3f4f6" },
   container: { flex: 1, backgroundColor: "#f3f4f6", padding: 16 },
+  // NEW: ensures content still fills the viewport on short lists
+  contentContainer: { flexGrow: 1, paddingBottom: 24 },
+
   headerContainer: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
@@ -709,42 +734,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
-  modalContent: {
-    backgroundColor: "white",
-    padding: 24,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
   modalHeader: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 16,
     textAlign: "right",
   },
-  modalLabel: {
-    fontSize: 14,
-    color: "#4b5563",
-    marginBottom: 8,
-    textAlign: "right",
-    marginTop: 8,
-  },
-  row: {
-    flexDirection: "row-reverse",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: "#f3f4f6",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  chipActive: { backgroundColor: "#dbeafe", borderColor: "#3b82f6" },
-  chipText: { color: "#4b5563", fontSize: 14 },
-  chipTextActive: { color: "#1d4ed8", fontWeight: "bold" },
   modalBtn: { flex: 1, padding: 14, borderRadius: 8, alignItems: "center" },
   cancelBtn: { backgroundColor: "#f3f4f6", marginRight: 8 },
   cancelBtnText: { color: "#374151", fontWeight: "600" },
