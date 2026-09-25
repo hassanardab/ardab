@@ -47,6 +47,16 @@ export default function TabLayout() {
               <MaterialIcons name="receipt" size={24} color={color} />
             ),
           }}
+        />{" "}
+        <Tabs.Screen
+          name="messages"
+          options={{
+            title: "الأسماء",
+            headerTitleAlign: "center",
+            tabBarIcon: ({ color }) => (
+              <MaterialIcons name="people" size={24} color={color} />
+            ),
+          }}
         />
         {/* Hide nested routes */}
         <Tabs.Screen name="project/[id]" options={{ href: null }} />

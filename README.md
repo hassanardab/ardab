@@ -115,3 +115,6 @@ adb reverse tcp:8081 tcp:8081
 ---
 
 ## v2.10
+
+[] hide the app bar on the dashboard
+[] the contacts asks for phone contact ppermission the it list all of them

@@ -22,6 +22,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-contacts",
+        {
+          "contactsPermission": "يحتاج التطبيق إلى الوصول إلى جهات الاتصال لعرض قائمة الأسماء"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
