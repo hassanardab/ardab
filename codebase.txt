@@ -3,9 +3,6 @@
 ├── CLAUDE.md
 ├── LICENSE
 ├── README.md
-├── [--include
-├── [--omit
-├── ]
 ├── app.json
 ├── eas.json
 ├── expo-env.d.ts
@@ -67,7 +64,7 @@
 ├── todos.md
 └── tsconfig.json
 
-19 directories, 49 files
+19 directories, 46 files
 
 === ./.claude/settings.json ===
 {
@@ -119,7 +116,7 @@ example
 
 # generated native folders
 /ios
-/android
+#/android
 
 === ./.vscode/extensions.json ===
 { "recommendations": ["expo.vscode-expo-tools"] }
@@ -214,8 +211,8 @@ This command will move the starter code to the **app-example** directory and cre
 
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
-
+To learn more about developing your project with Expo, look at the following resources:        me oh
+ B cB
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
@@ -300,7 +297,7 @@ adb reverse tcp:8081 tcp:8081
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "2.9",
+    "version": "2.10",
     "orientation": "portrait",
     "icon": "./assets/images/icon_white_background.png",
     "scheme": "ardab",
@@ -352,6 +349,49 @@ adb reverse tcp:8081 tcp:8081
     }
   }
 }
+
+=== ./.github/workflows/build-apk.yml ===
+name: Build Android Debug APK
+
+on:
+  push:
+    branches: ["main", "master"] # Change to your default branch if different
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18 # Match your project's Node version
+          cache: "npm"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
 === ./package.json ===
 {
@@ -7341,11 +7381,3 @@ const styles = StyleSheet.create({
     "production": {}
   }
 }
-
-=== ./] ===
-
-=== ./[--omit ===
-
-=== ./...]] ===
-
-=== ./[--include ===

@@ -318,8 +318,8 @@ export const getEnglishInvoiceHtml = (
             <div class="invoice-meta">
               <div class="invoice-title">Invoice</div>
               <div class="meta-grid">
-                <div class="meta-label">Invoice #</div>
-                <div class="meta-value">880601</div>
+             <div class="meta-label">Invoice #</div>
+             <div class="meta-value">${invoice.invoiceNumber ? escapeHtml(invoice.invoiceNumber) : "-"}</div>
                 
                 <div class="meta-label">Date</div>
                 <div class="meta-value">${dateStr}</div>
@@ -327,8 +327,8 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-label">Time</div>
                 <div class="meta-value">10:00 AM</div>
 
-                <div class="meta-label">Paid Amount</div>
-                <div class="meta-value">${formatMoney(0)}</div>
+               <div class="meta-label">Paid Amount</div>
+               <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>
               </div>
             </div>
           </div>
@@ -421,10 +421,24 @@ export const getEnglishInvoiceHtml = (
                        </tr>`
                     : ""
                 }
-                <tr class="total-row">
-                  <td>Total</td>
-                  <td class="val-col">${formatMoney(total)}</td>
-                </tr>
+              <tr class="total-row">
+  <td>Total</td>
+  <td class="val-col">${formatMoney(total)}</td>
+</tr>
+${
+  (invoice.paidAmount || 0) > 0
+    ? `
+  <tr>
+    <td>Paid Amount</td>
+    <td class="val-col">${formatMoney(invoice.paidAmount)}</td>
+  </tr>
+  <tr>
+    <td>Balance Due</td>
+    <td class="val-col">${formatMoney(total - invoice.paidAmount)}</td>
+  </tr>
+  `
+    : ""
+}
               </table>
             </div>
           </div>

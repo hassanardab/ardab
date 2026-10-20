@@ -321,13 +321,16 @@ export const getArabicInvoiceHtml = (
               <div class="invoice-title">فاتورة مبيعات</div>
               <div class="meta-grid">
                 <div class="meta-label">رقم الفاتورة #</div>
-                <div class="meta-value">880601</div>
+                <div class="meta-value">${invoice.invoiceNumber ? escapeHtml(invoice.invoiceNumber) : "-"}</div>  <div class="meta-label">رقم الفاتورة #</div>
                 
                 <div class="meta-label">التاريخ</div>
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">الوقت</div>
                 <div class="meta-value">10:00 AM</div>
+              
+                <div class="od-label">مبلغ مدفوع مسبقاً:</div>
+                <div class="od-value">${(invoice.paidAmount || 0) > 0 ? formatMoney(invoice.paidAmount) : "لا يوجد"}</div>
 
             </div>
             </div>
@@ -421,10 +424,24 @@ export const getArabicInvoiceHtml = (
                        </tr>`
                     : ""
                 }
-                <tr class="total-row">
-                  <td>المجموع</td>
-                  <td class="val-col">${formatMoney(total)}</td>
-                </tr>
+               <tr class="total-row">
+  <td>المجموع</td>
+  <td class="val-col">${formatMoney(total)}</td>
+</tr>
+${
+  (invoice.paidAmount || 0) > 0
+    ? `
+  <tr>
+    <td>المبلغ المدفوع</td>
+    <td class="val-col">${formatMoney(invoice.paidAmount)}</td>
+  </tr>
+  <tr>
+    <td>المتبقي</td>
+    <td class="val-col">${formatMoney(total - invoice.paidAmount)}</td>
+  </tr>
+`
+    : ""
+}
               </table>
             </div>
           </div>

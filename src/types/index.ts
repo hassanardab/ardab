@@ -63,6 +63,8 @@ export interface Invoice {
   type: InvoiceType;
   companyName: string;
   companyLogo?: string;
+  invoiceNumber: string; // NEW — dynamic invoice number
+  paidAmount: number; // NEW — amount paid up-front
   companyAddress?: string; // NEW
   customerName: string;
   companyPhone?: string; // NEW: company phone

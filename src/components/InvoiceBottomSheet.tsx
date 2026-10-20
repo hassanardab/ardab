@@ -49,6 +49,9 @@ export default function InvoiceBottomSheet({
   const [date, setDate] = useState(new Date());
   const [companyAddress, setCompanyAddress] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [paidAmountInput, setPaidAmountInput] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: generateId(), item: "", description: "", quantity: 1, price: 0 },
@@ -73,6 +76,7 @@ export default function InvoiceBottomSheet({
         setPhoneNumber(stripPhoneFormatting(invoiceToEdit.phoneNumber || ""));
         setAddress(invoiceToEdit.address || "");
         setDate(new Date(invoiceToEdit.date));
+
         const loadedItems = invoiceToEdit.items.map((item) => ({
           ...item,
           id: item.id || generateId(),
@@ -85,6 +89,11 @@ export default function InvoiceBottomSheet({
         setPriceInputs(inputs);
         setTax(invoiceToEdit.tax);
         setDiscount(invoiceToEdit.discount);
+        setInvoiceNumber(invoiceToEdit.invoiceNumber || "");
+        setPaidAmount(invoiceToEdit.paidAmount || 0);
+        setPaidAmountInput(
+          invoiceToEdit.paidAmount ? String(invoiceToEdit.paidAmount) : "",
+        );
       } else {
         // Reset for new invoice
         setType("ARABIC_INV");
@@ -95,6 +104,9 @@ export default function InvoiceBottomSheet({
         setCompanyAddress("");
         setAddress("");
         setCompanyPhone("");
+        setInvoiceNumber("");
+        setPaidAmount(0);
+        setPaidAmountInput("");
         setDate(new Date());
         const newItem = {
           id: generateId(),
@@ -103,6 +115,7 @@ export default function InvoiceBottomSheet({
           quantity: 1,
           price: 0,
         };
+
         setItems([newItem]);
         setPriceInputs({ [newItem.id]: "" });
         setTax(0);
@@ -130,6 +143,8 @@ export default function InvoiceBottomSheet({
       type,
       companyName: companyName.trim(),
       companyLogo,
+      invoiceNumber: invoiceNumber.trim(), // NEW
+      paidAmount: paidAmount || 0, // NEW
       customerName: customerName.trim(),
       phoneNumber: rawPhone, // store only digits, may be empty
       address: address.trim(),
@@ -210,7 +225,15 @@ export default function InvoiceBottomSheet({
       updateItem(id, "price", 0);
     }
   };
-
+  const handlePaidAmountChange = (text: string) => {
+    setPaidAmountInput(text);
+    const num = parseFormattedNumberWithDecimals(text);
+    if (!isNaN(num) && text !== "" && !text.endsWith(".")) {
+      setPaidAmount(num);
+    } else if (text === "" || text === "-") {
+      setPaidAmount(0);
+    }
+  };
   const handlePhoneChange = (text: string) => {
     // Keep only digits
     const digits = text.replace(/\D/g, "");
@@ -336,6 +359,19 @@ export default function InvoiceBottomSheet({
               />
             </View>
 
+            {/* Invoice number Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>رقم الفاتورة</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل رقم الفاتورة"
+                placeholderTextColor="#9CA3AF"
+                value={invoiceNumber}
+                onChangeText={setInvoiceNumber}
+                textAlign="right"
+              />
+            </View>
+
             {/* Company Phone */}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>رقم هاتف الشركة (اختياري)</Text>
@@ -407,6 +443,44 @@ export default function InvoiceBottomSheet({
                 numberOfLines={2}
               />
             </View>
+            <View
+              style={[styles.inputGroup, { marginTop: 14, marginBottom: 0 }]}
+            >
+              <Text style={styles.fieldLabel}>المبلغ المدفوع</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="decimal-pad"
+                value={formatPriceInputDisplay(paidAmountInput)}
+                onChangeText={handlePaidAmountChange}
+                textAlign="right"
+              />
+            </View>
+
+            {paidAmount > 0 && (
+              <View style={styles.summaryRow}>
+                <Text
+                  style={[
+                    styles.summaryValue,
+                    {
+                      fontWeight: "800",
+                      color: total - paidAmount >= 0 ? "#059669" : "#DC2626",
+                    },
+                  ]}
+                >
+                  {formatNumberWithCommas(total - paidAmount)}
+                </Text>
+                <Text
+                  style={[
+                    styles.summaryLabel,
+                    { fontWeight: "700", color: "#0F172A" },
+                  ]}
+                >
+                  المتبقي
+                </Text>
+              </View>
+            )}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>تاريخ الفاتورة</Text>
               <TouchableOpacity
