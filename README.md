@@ -47,8 +47,8 @@ This command will move the starter code to the **app-example** directory and cre
 
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
-
+To learn more about developing your project with Expo, look at the following resources:        me oh
+ B cB
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
@@ -116,5 +116,14 @@ adb reverse tcp:8081 tcp:8081
 
 ## v2.10
 
+[] generate ESA APK dev file
+[] dev works
+[] make the invoice # & paid amount on the form
+[] generate release version
 [] hide the app bar on the dashboard
+[]
+
+## v2.11
+
 [] the contacts asks for phone contact ppermission the it list all of them
+[] you can change the catefhori on the transaction form

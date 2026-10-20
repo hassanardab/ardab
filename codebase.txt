@@ -3,7 +3,11 @@
 ├── CLAUDE.md
 ├── LICENSE
 ├── README.md
+├── [--include
+├── [--omit
+├── ]
 ├── app.json
+├── eas.json
 ├── expo-env.d.ts
 ├── onHold
 │   ├── messages
@@ -63,7 +67,7 @@
 ├── todos.md
 └── tsconfig.json
 
-19 directories, 45 files
+19 directories, 49 files
 
 === ./.claude/settings.json ===
 {
@@ -279,8 +283,17 @@ adb reverse tcp:8081 tcp:8081
 
 ## v2.10
 
+[] generate ESA APK dev file
+[] dev works
+[] make the invoice # & paid amount on the form
+[] generate release version
 [] hide the app bar on the dashboard
+[]
+
+## v2.11
+
 [] the contacts asks for phone contact ppermission the it list all of them
+[] you can change the catefhori on the transaction form
 
 === ./app.json ===
 {
@@ -298,7 +311,11 @@ adb reverse tcp:8081 tcp:8081
     },
     "android": {
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.ArdabManager"
+      "package": "com.anonymous.ArdabManager",
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ]
     },
     "web": {
       "output": "static",
@@ -306,6 +323,12 @@ adb reverse tcp:8081 tcp:8081
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "يحتاج التطبيق إلى الوصول إلى جهات الاتصال لعرض قائمة الأسماء"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -320,6 +343,12 @@ adb reverse tcp:8081 tcp:8081
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "749668c0-5221-473d-86f1-eb4005aec605"
+      }
     }
   }
 }
@@ -338,6 +367,8 @@ adb reverse tcp:8081 tcp:8081
     "@react-navigation/native": "^7.3.14",
     "expo": "~57.0.8",
     "expo-constants": "~57.0.7",
+    "expo-contacts": "~57.0.6",
+    "expo-dev-client": "~57.0.20",
     "expo-device": "~57.0.1",
     "expo-file-system": "~57.0.1",
     "expo-font": "~57.0.1",
@@ -1508,150 +1539,256 @@ const styles = StyleSheet.create({
 
 === ./src/app/messages.tsx ===
 // src/app/messages.tsx
-import { useStore } from "@/store/useStore";
-import { formatRelativeTime } from "@/utils/format";
-import { useRouter } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import * as Contacts from "expo-contacts";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
+type ContactCard = {
+  id: string;
+  name: string;
+  phone?: string;
+};
+
+type ScreenStatus = "loading" | "granted" | "denied" | "error";
+
 export default function MessagesScreen() {
-  const router = useRouter();
-  const conversations = useStore((state) => state.conversations);
-  const currentUserId = "user1";
+  const [contacts, setContacts] = useState<ContactCard[]>([]);
+  const [status, setStatus] = useState<ScreenStatus>("loading");
 
-  const getOtherParticipant = (participants: string[]) => {
-    return participants.find((id) => id !== currentUserId) || "Unknown";
-  };
+  const loadContacts = useCallback(async () => {
+    try {
+      setStatus("loading");
 
-  const formatTimestamp = (date: Date | string) => {
-    if (!date) return "";
-    return formatRelativeTime(new Date(date));
-  };
+      // 1) Ask for permission
+      const { status: permStatus } = await Contacts.requestPermissionsAsync();
 
-  const getDisplayName = (uid: string) => {
-    const names: Record<string, string> = {
-      user1: "You",
-      user2: "Alice",
-      user3: "Bob",
-      user4: "Charlie",
-    };
-    return names[uid] || uid.slice(0, 8);
-  };
+      if (permStatus !== "granted") {
+        setStatus("denied");
+        return;
+      }
 
+      // 2) Fetch contacts
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+        sort: Contacts.SortTypes.FirstName,
+      });
+
+      // 3) Keep only entries that actually have a name, sort them
+      const formatted: ContactCard[] = data
+        .filter((c) => c.name && c.name.trim().length > 0)
+        .map((c) => ({
+          id:
+            c.id ?? `${c.name}-${c.phoneNumbers?.[0]?.number ?? Math.random()}`,
+          name: c.name!.trim(),
+          phone: c.phoneNumbers?.[0]?.number,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setContacts(formatted);
+      setStatus("granted");
+    } catch (err) {
+      console.warn("Contacts error:", err);
+      setStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadContacts();
+  }, [loadContacts]);
+
+  // ---------- Loading ----------
+  if (status === "loading") {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#111827" />
+        <Text style={styles.infoText}>جارٍ تحميل جهات الاتصال...</Text>
+      </View>
+    );
+  }
+
+  // ---------- Permission denied / error ----------
+  if (status === "denied" || status === "error") {
+    return (
+      <View style={styles.center}>
+        <MaterialIcons name="contacts" size={56} color="#9ca3af" />
+        <Text style={styles.errorTitle}>لا يمكن الوصول إلى جهات الاتصال</Text>
+        <Text style={styles.errorSubtitle}>
+          يرجى السماح بالوصول إلى جهات الاتصال لعرض قائمة الأسماء
+        </Text>
+
+        <TouchableOpacity style={styles.primaryBtn} onPress={loadContacts}>
+          <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkBtn}
+          onPress={() => Linking.openSettings()}
+        >
+          <Text style={styles.linkBtnText}>فتح الإعدادات</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // ---------- Contacts list ----------
   return (
     <View style={styles.container}>
       <FlatList
-        data={conversations}
+        data={contacts}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={
-          conversations.length === 0
-            ? styles.emptyContainer
-            : { paddingVertical: 4 }
-        }
-        renderItem={({ item }) => {
-          const otherId = getOtherParticipant(item.participants);
-          const name = getDisplayName(otherId);
-          return (
-            <TouchableOpacity
-              style={styles.conversationItem}
-              // onPress={() => router.push(`/messages/${item.id}`)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {name.charAt(0).toUpperCase()}
+        contentContainerStyle={styles.listContent}
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {item.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+
+            <View style={styles.infoBlock}>
+              <Text style={styles.name} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {item.phone ? (
+                <Text style={styles.phone} numberOfLines={1}>
+                  {item.phone}
                 </Text>
-              </View>
-              <View style={styles.conversationInfo}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {name}
-                  </Text>
-                  <Text style={styles.timestamp}>
-                    {formatTimestamp(item.updatedAt)}
-                  </Text>
-                </View>
-                {item.lastMessage && (
-                  <Text style={styles.lastMessage} numberOfLines={1}>
-                    {item.lastMessage.senderId === currentUserId ? "You: " : ""}
-                    {item.lastMessage.text}
-                  </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+              ) : null}
+            </View>
+          </TouchableOpacity>
+        )}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No conversations yet</Text>
-            <TouchableOpacity
-              style={styles.newChatBtn}
-              onPress={() => router.push("/messages/new" as any)}
-            >
-              <Text style={styles.newChatBtnText}>Start a new chat</Text>
-            </TouchableOpacity>
+          <View style={styles.center}>
+            <Text style={styles.infoText}>لا توجد جهات اتصال</Text>
           </View>
         }
       />
+
+      <View style={styles.footerInfo}>
+        <Text style={styles.footerText}>{contacts.length} جهة اتصال</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  emptyContainer: {
+  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
+    backgroundColor: "#f3f4f6",
   },
-  emptyText: { fontSize: 16, color: "#6c757d" },
-  newChatBtn: {
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#111827",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+  avatarText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  infoBlock: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+    textAlign: "right",
+  },
+  phone: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginTop: 3,
+    textAlign: "right",
+    writingDirection: "ltr",
+  },
+  infoText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+  },
+  errorTitle: {
     marginTop: 16,
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111827",
+    textAlign: "center",
+  },
+  errorSubtitle: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  primaryBtn: {
+    marginTop: 20,
+    backgroundColor: "#111827",
+    paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,
   },
-  newChatBtnText: { color: "#fff", fontWeight: "600" },
-  conversationItem: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e9ecef",
+  primaryBtnText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  linkBtn: {
+    marginTop: 12,
+    padding: 8,
+  },
+  linkBtnText: {
+    color: "#2563eb",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  footerInfo: {
+    paddingVertical: 10,
+    borderTopWidth: 0.5,
+    borderTopColor: "#e5e7eb",
+    backgroundColor: "white",
     alignItems: "center",
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#adb5bd",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  avatarText: {
-    color: "#fff",
-    fontSize: 20,
+  footerText: {
+    fontSize: 12,
+    color: "#6b7280",
     fontWeight: "600",
   },
-  conversationInfo: { flex: 1 },
-  rowTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    marginBottom: 4,
-  },
-  name: { fontSize: 17, fontWeight: "600", color: "#1c1c1e" },
-  lastMessage: { fontSize: 14, color: "#6c757d" },
-  timestamp: { fontSize: 12, color: "#8e8e93", marginLeft: 8 },
 });
 
 === ./src/app/project/[id].tsx ===
@@ -7181,3 +7318,34 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
+
+=== ./eas.json ===
+{
+  "cli": {
+    "version": ">= 18.13.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+
+=== ./] ===
+
+=== ./[--omit ===
+
+=== ./...]] ===
+
+=== ./[--include ===
