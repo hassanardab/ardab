@@ -378,20 +378,19 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Debug APK
+      - name: Build Release APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # assembleRelease builds the production-ready minified version
+          ./gradlew assembleRelease
 
-      - name: Upload APK Artifact
+      # Step 6: Package and upload the release APK as a downloadable artifact
+      - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
 === ./package.json ===
 {
@@ -3918,6 +3917,9 @@ export default function InvoiceBottomSheet({
   const [date, setDate] = useState(new Date());
   const [companyAddress, setCompanyAddress] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [paidAmountInput, setPaidAmountInput] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([
     { id: generateId(), item: "", description: "", quantity: 1, price: 0 },
@@ -3942,6 +3944,7 @@ export default function InvoiceBottomSheet({
         setPhoneNumber(stripPhoneFormatting(invoiceToEdit.phoneNumber || ""));
         setAddress(invoiceToEdit.address || "");
         setDate(new Date(invoiceToEdit.date));
+
         const loadedItems = invoiceToEdit.items.map((item) => ({
           ...item,
           id: item.id || generateId(),
@@ -3954,6 +3957,11 @@ export default function InvoiceBottomSheet({
         setPriceInputs(inputs);
         setTax(invoiceToEdit.tax);
         setDiscount(invoiceToEdit.discount);
+        setInvoiceNumber(invoiceToEdit.invoiceNumber || "");
+        setPaidAmount(invoiceToEdit.paidAmount || 0);
+        setPaidAmountInput(
+          invoiceToEdit.paidAmount ? String(invoiceToEdit.paidAmount) : "",
+        );
       } else {
         // Reset for new invoice
         setType("ARABIC_INV");
@@ -3964,6 +3972,9 @@ export default function InvoiceBottomSheet({
         setCompanyAddress("");
         setAddress("");
         setCompanyPhone("");
+        setInvoiceNumber("");
+        setPaidAmount(0);
+        setPaidAmountInput("");
         setDate(new Date());
         const newItem = {
           id: generateId(),
@@ -3972,6 +3983,7 @@ export default function InvoiceBottomSheet({
           quantity: 1,
           price: 0,
         };
+
         setItems([newItem]);
         setPriceInputs({ [newItem.id]: "" });
         setTax(0);
@@ -3999,6 +4011,8 @@ export default function InvoiceBottomSheet({
       type,
       companyName: companyName.trim(),
       companyLogo,
+      invoiceNumber: invoiceNumber.trim(), // NEW
+      paidAmount: paidAmount || 0, // NEW
       customerName: customerName.trim(),
       phoneNumber: rawPhone, // store only digits, may be empty
       address: address.trim(),
@@ -4079,7 +4093,15 @@ export default function InvoiceBottomSheet({
       updateItem(id, "price", 0);
     }
   };
-
+  const handlePaidAmountChange = (text: string) => {
+    setPaidAmountInput(text);
+    const num = parseFormattedNumberWithDecimals(text);
+    if (!isNaN(num) && text !== "" && !text.endsWith(".")) {
+      setPaidAmount(num);
+    } else if (text === "" || text === "-") {
+      setPaidAmount(0);
+    }
+  };
   const handlePhoneChange = (text: string) => {
     // Keep only digits
     const digits = text.replace(/\D/g, "");
@@ -4205,6 +4227,19 @@ export default function InvoiceBottomSheet({
               />
             </View>
 
+            {/* Invoice number Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>رقم الفاتورة</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل رقم الفاتورة"
+                placeholderTextColor="#9CA3AF"
+                value={invoiceNumber}
+                onChangeText={setInvoiceNumber}
+                textAlign="right"
+              />
+            </View>
+
             {/* Company Phone */}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>رقم هاتف الشركة (اختياري)</Text>
@@ -4276,6 +4311,44 @@ export default function InvoiceBottomSheet({
                 numberOfLines={2}
               />
             </View>
+            <View
+              style={[styles.inputGroup, { marginTop: 14, marginBottom: 0 }]}
+            >
+              <Text style={styles.fieldLabel}>المبلغ المدفوع</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="decimal-pad"
+                value={formatPriceInputDisplay(paidAmountInput)}
+                onChangeText={handlePaidAmountChange}
+                textAlign="right"
+              />
+            </View>
+
+            {paidAmount > 0 && (
+              <View style={styles.summaryRow}>
+                <Text
+                  style={[
+                    styles.summaryValue,
+                    {
+                      fontWeight: "800",
+                      color: total - paidAmount >= 0 ? "#059669" : "#DC2626",
+                    },
+                  ]}
+                >
+                  {formatNumberWithCommas(total - paidAmount)}
+                </Text>
+                <Text
+                  style={[
+                    styles.summaryLabel,
+                    { fontWeight: "700", color: "#0F172A" },
+                  ]}
+                >
+                  المتبقي
+                </Text>
+              </View>
+            )}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>تاريخ الفاتورة</Text>
               <TouchableOpacity
@@ -5515,13 +5588,16 @@ export const getArabicInvoiceHtml = (
               <div class="invoice-title">فاتورة مبيعات</div>
               <div class="meta-grid">
                 <div class="meta-label">رقم الفاتورة #</div>
-                <div class="meta-value">880601</div>
+                <div class="meta-value">${invoice.invoiceNumber ? escapeHtml(invoice.invoiceNumber) : "-"}</div>  <div class="meta-label">رقم الفاتورة #</div>
                 
                 <div class="meta-label">التاريخ</div>
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">الوقت</div>
                 <div class="meta-value">10:00 AM</div>
+              
+                <div class="od-label">مبلغ مدفوع مسبقاً:</div>
+                <div class="od-value">${(invoice.paidAmount || 0) > 0 ? formatMoney(invoice.paidAmount) : "لا يوجد"}</div>
 
             </div>
             </div>
@@ -5615,10 +5691,24 @@ export const getArabicInvoiceHtml = (
                        </tr>`
                     : ""
                 }
-                <tr class="total-row">
-                  <td>المجموع</td>
-                  <td class="val-col">${formatMoney(total)}</td>
-                </tr>
+               <tr class="total-row">
+  <td>المجموع</td>
+  <td class="val-col">${formatMoney(total)}</td>
+</tr>
+${
+  (invoice.paidAmount || 0) > 0
+    ? `
+  <tr>
+    <td>المبلغ المدفوع</td>
+    <td class="val-col">${formatMoney(invoice.paidAmount)}</td>
+  </tr>
+  <tr>
+    <td>المتبقي</td>
+    <td class="val-col">${formatMoney(total - invoice.paidAmount)}</td>
+  </tr>
+`
+    : ""
+}
               </table>
             </div>
           </div>
@@ -5950,8 +6040,8 @@ export const getEnglishInvoiceHtml = (
             <div class="invoice-meta">
               <div class="invoice-title">Invoice</div>
               <div class="meta-grid">
-                <div class="meta-label">Invoice #</div>
-                <div class="meta-value">880601</div>
+             <div class="meta-label">Invoice #</div>
+             <div class="meta-value">${invoice.invoiceNumber ? escapeHtml(invoice.invoiceNumber) : "-"}</div>
                 
                 <div class="meta-label">Date</div>
                 <div class="meta-value">${dateStr}</div>
@@ -5959,8 +6049,8 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-label">Time</div>
                 <div class="meta-value">10:00 AM</div>
 
-                <div class="meta-label">Paid Amount</div>
-                <div class="meta-value">${formatMoney(0)}</div>
+               <div class="meta-label">Paid Amount</div>
+               <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>
               </div>
             </div>
           </div>
@@ -5979,20 +6069,14 @@ export const getEnglishInvoiceHtml = (
               </div>
             </div>
 
-            <!-- Shipping Box -->
-            <div class="panel">
-              <div class="panel-header">Ship To</div>
-              <div class="panel-body">
-               
-              </div>
-            </div>
+        
 
             <!-- Order Details Box -->
             <div class="panel">
               <div class="panel-header">Invoice Details</div>
               <div class="panel-body order-details-grid">
                 <div class="od-label">Sale Type:</div>
-                <div class="od-value">Wholesale</div>
+                <div class="od-value">Sales</div>
                 
                 <div class="od-label">PO No:</div>
                 <div class="od-value">-</div>
@@ -6004,7 +6088,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="od-value">Due on Receipt</div>
                 
                 <div class="od-label">Payment:</div>
-                <div class="od-value">None</div>
+                <div class="od-value">Cash</div>
               </div>
             </div>
           </div>
@@ -6053,10 +6137,24 @@ export const getEnglishInvoiceHtml = (
                        </tr>`
                     : ""
                 }
-                <tr class="total-row">
-                  <td>Total</td>
-                  <td class="val-col">${formatMoney(total)}</td>
-                </tr>
+              <tr class="total-row">
+  <td>Total</td>
+  <td class="val-col">${formatMoney(total)}</td>
+</tr>
+${
+  (invoice.paidAmount || 0) > 0
+    ? `
+  <tr>
+    <td>Paid Amount</td>
+    <td class="val-col">${formatMoney(invoice.paidAmount)}</td>
+  </tr>
+  <tr>
+    <td>Balance Due</td>
+    <td class="val-col">${formatMoney(total - invoice.paidAmount)}</td>
+  </tr>
+  `
+    : ""
+}
               </table>
             </div>
           </div>
@@ -6775,6 +6873,8 @@ export interface Invoice {
   type: InvoiceType;
   companyName: string;
   companyLogo?: string;
+  invoiceNumber: string; // NEW — dynamic invoice number
+  paidAmount: number; // NEW — amount paid up-front
   companyAddress?: string; // NEW
   customerName: string;
   companyPhone?: string; // NEW: company phone
