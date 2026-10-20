@@ -347,20 +347,14 @@ export const getEnglishInvoiceHtml = (
               </div>
             </div>
 
-            <!-- Shipping Box -->
-            <div class="panel">
-              <div class="panel-header">Ship To</div>
-              <div class="panel-body">
-               
-              </div>
-            </div>
+        
 
             <!-- Order Details Box -->
             <div class="panel">
               <div class="panel-header">Invoice Details</div>
               <div class="panel-body order-details-grid">
                 <div class="od-label">Sale Type:</div>
-                <div class="od-value">Wholesale</div>
+                <div class="od-value">Sales</div>
                 
                 <div class="od-label">PO No:</div>
                 <div class="od-value">-</div>
@@ -372,7 +366,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="od-value">Due on Receipt</div>
                 
                 <div class="od-label">Payment:</div>
-                <div class="od-value">None</div>
+                <div class="od-value">Cash</div>
               </div>
             </div>
           </div>
