@@ -17,11 +17,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Setup Node.js (CRITICAL: Required so Gradle can run node commands inside settings.gradle)
+      # Step 2: Setup Node.js v20 (Required by Expo/Metro for newer methods like toReversed)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18 # Match your project's Node version
+          node-version: 20 # Upgraded from 18 to 20 to satisfy modern Expo tooling requirements
           cache: "npm"
 
       # Step 3: Setup Java Development Kit (JDK 17 is required for modern React Native/Expo)

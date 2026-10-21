@@ -284,12 +284,21 @@ export const getEnglishInvoiceHtml = (
             color: #000;
             padding-top: 10px;
           }
+
+          /* =========================================
+             SIGNATURE — line sits just above the text
+          ========================================== */
           .signature-area {
-            padding-top: 15px;
+            width: 80%;
+            padding-top: 115px; /* whitespace for the actual signature */
+          }
+          .signature-line {
             border-top: 1px dashed #ccc;
+          }
+          .signature-text {
+            padding-top: 4px;
             font-size: 10px;
             color: #555;
-            width: 80%;
           }
         </style>
       </head>
@@ -325,7 +334,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">Time</div>
-                <div class="meta-value">10:00 AM</div>
+                <div class="meta-value">03:00 PMec</div>
 
                <div class="meta-label">Paid Amount</div>
                <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>
@@ -391,9 +400,9 @@ export const getEnglishInvoiceHtml = (
           <!-- BOTTOM SECTION -->
           <div class="bottom-container">
             <div class="bottom-left-cell">
-            
               <div class="signature-area">
-                Authorized Signature & Date
+                <div class="signature-line"></div>
+                <div class="signature-text">Authorized Signature &amp; Date</div>
               </div>
             </div>
             
