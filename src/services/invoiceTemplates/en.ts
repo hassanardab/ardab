@@ -334,7 +334,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">Time</div>
-                <div class="meta-value">03:00 PMec</div>
+                <div class="meta-value">03:00 PM</div>
 
                <div class="meta-label">Paid Amount</div>
                <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>
