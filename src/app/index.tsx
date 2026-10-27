@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native";
 import AddTransactionBottomSheet from "../components/AddTransactionBottomSheet";
-import { useStore } from "../store/useStore";
+import { resolveType, useStore } from "../store/useStore";
 import { Project } from "../types";
 import { formatCurrency } from "../utils/format";
 
@@ -161,7 +161,9 @@ export default function DashboardScreen() {
     }
   };
 
-  // Compute all project balances in one pass, keyed by projectId
+  // Compute all project balances in one pass, keyed by projectId.
+  // Direction comes from each project's own transactionTypes, so custom
+  // and archived types are handled consistently with the store.
   const projectBalances = useMemo(() => {
     const { start, end } = getRange();
     const result: Record<
@@ -180,7 +182,11 @@ export default function DashboardScreen() {
           const ts = new Date(t.date).getTime();
           if (ts < start || ts > end) return;
 
-          if (t.type === "TRANSFER") {
+          const def = resolveType(project, t.type);
+          // Unknown or informational-only type: no balance effect.
+          if (!def || !def.affectsBalance) return;
+
+          if (def.id === "TRANSFER") {
             if (t.method === "BANK") {
               bank += t.amount;
               cash -= t.amount;
@@ -189,14 +195,14 @@ export default function DashboardScreen() {
               bank -= t.amount;
             }
           } else {
-            const isInflow = t.type === "INCOME" || t.type === "LOAN_RECEIVED";
+            const isInflow = def.direction === "INFLOW";
             const delta = isInflow ? t.amount : -t.amount;
             if (t.method === "CASH") cash += delta;
             else bank += delta;
           }
 
-          if (t.type === "LOAN_RECEIVED") loanBalance += t.amount;
-          if (t.type === "LOAN_GIVEN") loanBalance -= t.amount;
+          if (def.countsAsLoanReceived) loanBalance += t.amount;
+          if (def.countsAsLoanGiven) loanBalance -= t.amount;
         });
 
       result[project.id] = { cash, bank, loanBalance };

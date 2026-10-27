@@ -5,7 +5,22 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Invoice, Project, Transaction } from "../types";
 
+import { formatCurrencyPdfWithCents } from "@/utils/format";
+import { getArabicInvoiceHtml } from "./invoiceTemplates/ar";
 import { getEnglishInvoiceHtml } from "./invoiceTemplates/en";
+import { getArFinancialReportHtml } from "./repoetTemplates/A4";
+
+// ----- PDF page sizes (in points; 1 inch = 72 pt) -----
+// A4: 210mm x 297mm = 595 x 842 pt
+// Mobile: a tall phone-card page (~120mm x 210mm) = ~340 x 595 pt.
+//         The width matters most — that's what makes text scale up on a
+//         phone without pinch-zoom. Height just controls where pages break.
+export const PDF_PAGE_SIZES = {
+  A4: { width: 595, height: 842 },
+  MOBILE: { width: 340, height: 600 },
+} as const;
+
+export type PdfPageSize = keyof typeof PDF_PAGE_SIZES;
 
 async function getImageBase64(uri: string): Promise<string> {
   try {
@@ -18,13 +33,6 @@ async function getImageBase64(uri: string): Promise<string> {
     return "";
   }
 }
-
-// src/services/PdfService.ts
-
-import { formatCurrencyPdfWithCents } from "@/utils/format";
-import { getArabicInvoiceHtml } from "./invoiceTemplates/ar";
-import { getArFinancialReportHtml } from "./repoetTemplates/A4";
-// ... other imports ...
 
 export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   // ----- Logo: try company logo, fallback to default app icon -----
@@ -79,9 +87,9 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   // ----- Choose formatter based on invoice type -----
   let formatMoney: (val: number) => string;
   if (invoice.type === "ENGLISH_INV") {
-    formatMoney = formatCurrencyPdfWithCents; // two decimals
+    formatMoney = formatCurrencyPdfWithCents;
   } else {
-    formatMoney = formatCurrencyPdf; // whole dollars (original)
+    formatMoney = formatCurrencyPdf;
   }
 
   const dateStr = new Date(invoice.date).toLocaleDateString("en-US", {
@@ -105,30 +113,6 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       .replace(/'/g, "&#039;");
   };
 
-  // Build items rows (only used for ARABIC_INV; ENGLISH_INV builds its own)
-  const itemsRows = invoice.items
-    .map(
-      (item, index) => `
-        <tr>
-          <td class="line-number">${index + 1}</td>
-          <td class="item-description">
-            <div class="item-name">${escapeHtml(item.item)}</div>
-              ${
-                item.description
-                  ? `<div class="item-details">${escapeHtml(item.description)}</div>`
-                  : ""
-              }
-            </td>
-            <td class="operation">${escapeHtml(item.description) || "-"}</td>
-            <td class="units">${item.quantity}</td>
-            <td class="unit-price">${formatMoney(item.price)}</td>
-            <td class="total-price">${formatMoney(item.quantity * item.price)}</td>
-          </tr>
-        `,
-    )
-    .join("");
-
-  // Choose template based on invoice type
   if (invoice.type === "ARABIC_INV") {
     return getArabicInvoiceHtml(
       invoice,
@@ -143,7 +127,6 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       total,
     );
   } else {
-    // ENGLISH_INV does NOT accept itemsRows – it builds its own internally
     return getEnglishInvoiceHtml(
       invoice,
       logoDataUri,
@@ -161,16 +144,24 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
 
 export const exportInvoicePdf = async (invoice: Invoice) => {
   const html = await getInvoiceHtml(invoice);
-  const fileName = `فاتورة-${invoice.id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const fileName = `فاتورة-${invoice.id}-${new Date()
+    .toISOString()
+    .slice(0, 10)}.pdf`;
   await exportPdf(html, fileName);
 };
 
+// ----- NEW signature: optional 3rd arg `options` -----
 export const exportPdf = async (
   html: string,
   customFileName: string = "report.pdf",
+  options?: { width: number; height: number },
 ) => {
   try {
-    const { uri } = await Print.printToFileAsync({ html });
+    const { uri } = await Print.printToFileAsync({
+      html,
+      // expo-print accepts width/height in points for custom page size
+      ...(options ? { width: options.width, height: options.height } : {}),
+    });
     const safeFileName = customFileName.replace(/[:/\\?%*|"<>]/g, "-");
 
     const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);

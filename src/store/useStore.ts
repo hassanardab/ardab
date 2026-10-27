@@ -4,11 +4,13 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
   Conversation,
+  DEFAULT_TRANSACTION_TYPES,
   Employee,
   Invoice,
   Message,
   Project,
   Transaction,
+  TransactionTypeDef,
 } from "../types";
 
 interface AppState {
@@ -16,7 +18,21 @@ interface AppState {
   transactions: Transaction[];
   employees: Employee[];
   invoices: Invoice[];
-  addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
+
+  // ---- Per-project transaction type CRUD ----
+  addTransactionType: (projectId: string, def: TransactionTypeDef) => void;
+  updateTransactionType: (
+    projectId: string,
+    typeId: string,
+    updates: Partial<Omit<TransactionTypeDef, "id" | "isSystem">>,
+  ) => void;
+  removeTransactionType: (projectId: string, typeId: string) => void;
+  reorderTransactionTypes: (projectId: string, orderedIds: string[]) => void;
+
+  // ---- Projects ----
+  addProject: (
+    project: Omit<Project, "currentCash" | "currentBank" | "transactionTypes">,
+  ) => void;
   addTransaction: (transaction: Transaction) => void;
   updateProject: (
     id: string,
@@ -30,6 +46,7 @@ interface AppState {
   updateInvoice: (id: string, updates: Partial<Omit<Invoice, "id">>) => void;
   deleteInvoice: (id: string) => void;
 
+  // ---- Messaging ----
   conversations: Conversation[];
   messages: Record<string, Message[]>;
   setConversations: (convs: Conversation[]) => void;
@@ -74,17 +91,40 @@ const defaultMessages: Record<string, Message[]> = {
   ],
 };
 
-// ----- HELPER: determines if a transaction is an inflow (increases balance) -----
-const isInflow = (type: string): boolean => {
-  return type === "INCOME" || type === "LOAN_RECEIVED";
-};
+// ---------------------------------------------------------------------------
+// Helpers: resolve a transaction type definition from a project's catalog.
+// These replace the old hardcoded `type === "INCOME"` checks. That means any
+// custom type a user creates automatically gets the right balance math.
+// ---------------------------------------------------------------------------
 
-// ----- HELPER: applies a transaction effect to a project's balances -----
-const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
-  const multiplier = sign; // +1 for add, -1 for remove/reverse
-  const amount = tx.amount * multiplier;
+export const resolveType = (
+  project: Project | undefined,
+  typeId: string,
+): TransactionTypeDef | undefined =>
+  project?.transactionTypes?.find((t) => t.id === typeId);
 
-  if (tx.type === "TRANSFER") {
+const isInflowByDef = (def: TransactionTypeDef | undefined): boolean =>
+  def?.direction === "INFLOW";
+
+/**
+ * Applies a transaction to a project's cash/bank balances.
+ * sign = +1 to add, -1 to reverse (used on update/remove).
+ *
+ * - Unknown types and NEUTRAL / affectsBalance=false types leave balances alone.
+ * - TRANSFER flips cash <-> bank depending on `method`.
+ * - Everything else moves by direction.
+ */
+const applyTransaction = (
+  project: Project,
+  tx: Transaction,
+  sign: 1 | -1,
+): Project => {
+  const def = resolveType(project, tx.type);
+  if (!def || !def.affectsBalance) return project;
+
+  const amount = tx.amount * sign;
+
+  if (def.id === "TRANSFER") {
     const isToBank = tx.method === "BANK";
     return {
       ...project,
@@ -93,8 +133,7 @@ const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
     };
   }
 
-  const inflow = isInflow(tx.type);
-  const delta = inflow ? amount : -amount;
+  const delta = isInflowByDef(def) ? amount : -amount;
 
   return {
     ...project,
@@ -105,6 +144,10 @@ const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
+
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
@@ -113,21 +156,89 @@ export const useStore = create<AppState>()(
       employees: [],
       invoices: [],
 
-      addInvoice: (invoice) =>
+      // ---------- Per-project transaction type CRUD ----------
+      addTransactionType: (projectId, def) =>
         set((state) => ({
-          invoices: [...state.invoices, invoice],
-        })),
-      updateInvoice: (id, updates) =>
-        set((state) => ({
-          invoices: state.invoices.map((inv) =>
-            inv.id === id ? { ...inv, ...updates } : inv,
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? { ...p, transactionTypes: [...p.transactionTypes, def] }
+              : p,
           ),
         })),
-      deleteInvoice: (id) =>
+
+      updateTransactionType: (projectId, typeId, updates) =>
         set((state) => ({
-          invoices: state.invoices.filter((inv) => inv.id !== id),
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  transactionTypes: p.transactionTypes.map((t) =>
+                    t.id === typeId ? { ...t, ...updates } : t,
+                  ),
+                }
+              : p,
+          ),
         })),
 
+      removeTransactionType: (projectId, typeId) =>
+        set((state) => {
+          const project = state.projects.find((p) => p.id === projectId);
+          const def = project?.transactionTypes.find((t) => t.id === typeId);
+          if (!def) return state;
+
+          const inUse = state.transactions.some(
+            (t) => t.projectId === projectId && t.type === typeId,
+          );
+
+          // System types and types still in use are archived, never removed.
+          // This keeps old transactions' labels resolvable and preserves the
+          // LOAN_RECEIVED / LOAN_GIVEN semantics used by dashboards/reports.
+          if (def.isSystem || inUse) {
+            return {
+              projects: state.projects.map((p) =>
+                p.id === projectId
+                  ? {
+                      ...p,
+                      transactionTypes: p.transactionTypes.map((t) =>
+                        t.id === typeId ? { ...t, archived: true } : t,
+                      ),
+                    }
+                  : p,
+              ),
+            };
+          }
+
+          return {
+            projects: state.projects.map((p) =>
+              p.id === projectId
+                ? {
+                    ...p,
+                    transactionTypes: p.transactionTypes.filter(
+                      (t) => t.id !== typeId,
+                    ),
+                  }
+                : p,
+            ),
+          };
+        }),
+
+      reorderTransactionTypes: (projectId, orderedIds) =>
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id !== projectId) return p;
+            const byId = new Map(p.transactionTypes.map((t) => [t.id, t]));
+            const ordered = orderedIds
+              .map((id) => byId.get(id))
+              .filter(Boolean) as TransactionTypeDef[];
+            // Preserve any types not in the provided ordering at the end.
+            const remaining = p.transactionTypes.filter(
+              (t) => !orderedIds.includes(t.id),
+            );
+            return { ...p, transactionTypes: [...ordered, ...remaining] };
+          }),
+        })),
+
+      // ---------- Projects ----------
       addProject: (projectData) =>
         set((state) => ({
           projects: [
@@ -136,13 +247,12 @@ export const useStore = create<AppState>()(
               ...projectData,
               currentCash: projectData.initialCash,
               currentBank: projectData.initialBank,
+              // Seed the defaults (shallow-copied so each project is isolated).
+              transactionTypes: DEFAULT_TRANSACTION_TYPES.map((t) => ({
+                ...t,
+              })),
             },
           ],
-        })),
-
-      addEmployee: (employee) =>
-        set((state) => ({
-          employees: [...state.employees, employee],
         })),
 
       updateProject: (id, updates) =>
@@ -151,6 +261,7 @@ export const useStore = create<AppState>()(
             p.id === id ? { ...p, ...updates } : p,
           ),
         })),
+
       removeProject: (projectId) =>
         set((state) => ({
           projects: state.projects.filter((p) => p.id !== projectId),
@@ -158,6 +269,7 @@ export const useStore = create<AppState>()(
             (t) => t.projectId !== projectId,
           ),
         })),
+
       addTransaction: (transaction) =>
         set((state) => {
           const updatedProjects = state.projects.map((proj) =>
@@ -178,14 +290,14 @@ export const useStore = create<AppState>()(
           );
           if (!oldTransaction) return state;
 
-          // Reverse old transaction
+          // 1) Reverse old effect
           const afterReverse = state.projects.map((proj) =>
             proj.id === oldTransaction.projectId
               ? applyTransaction(proj, oldTransaction, -1)
               : proj,
           );
 
-          // Apply new transaction
+          // 2) Apply new effect
           const finalProjects = afterReverse.map((proj) =>
             proj.id === updatedTransaction.projectId
               ? applyTransaction(proj, updatedTransaction, 1)
@@ -221,7 +333,30 @@ export const useStore = create<AppState>()(
           };
         }),
 
-      // ----- Messaging -----
+      // ---------- Employees / Invoices ----------
+      addEmployee: (employee) =>
+        set((state) => ({
+          employees: [...state.employees, employee],
+        })),
+
+      addInvoice: (invoice) =>
+        set((state) => ({
+          invoices: [...state.invoices, invoice],
+        })),
+
+      updateInvoice: (id, updates) =>
+        set((state) => ({
+          invoices: state.invoices.map((inv) =>
+            inv.id === id ? { ...inv, ...updates } : inv,
+          ),
+        })),
+
+      deleteInvoice: (id) =>
+        set((state) => ({
+          invoices: state.invoices.filter((inv) => inv.id !== id),
+        })),
+
+      // ---------- Messaging ----------
       conversations: defaultConversations,
       messages: defaultMessages,
 
@@ -265,6 +400,24 @@ export const useStore = create<AppState>()(
     {
       name: "finance-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // Bumped to 2 because the Project schema now carries `transactionTypes`.
+      version: 2,
+      // Backfill defaults for projects persisted before this change.
+      migrate: (persistedState: any, _version) => {
+        const state = persistedState as Partial<AppState>;
+        const projects = (state.projects ?? []).map((p: any) => {
+          if (Array.isArray(p.transactionTypes) && p.transactionTypes.length) {
+            return p as Project;
+          }
+          return {
+            ...p,
+            transactionTypes: DEFAULT_TRANSACTION_TYPES.map((t) => ({
+              ...t,
+            })),
+          } as Project;
+        });
+        return { ...state, projects };
+      },
     },
   ),
 );

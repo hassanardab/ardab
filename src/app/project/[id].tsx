@@ -1,3 +1,4 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -11,7 +12,7 @@ import {
   View,
 } from "react-native";
 import AddTransactionBottomSheet from "../../components/AddTransactionBottomSheet";
-import { useStore } from "../../store/useStore";
+import { resolveType, useStore } from "../../store/useStore";
 import { Transaction } from "../../types";
 import { formatCurrency } from "../../utils/format";
 
@@ -36,6 +37,19 @@ export default function ProjectDetailScreen() {
   const [showEndPicker, setShowEndPicker] = useState(false);
 
   const project = projects.find((p) => p.id === id);
+
+  // ---- Resolve a type definition from THIS project's catalog ----
+  const getTypeDef = (typeId: string) => resolveType(project, typeId);
+
+  const getTypeLabel = (typeId: string) => {
+    const def = getTypeDef(typeId);
+    return def?.label ?? typeId;
+  };
+
+  const isInflowTx = (typeId: string) => {
+    const def = getTypeDef(typeId);
+    return def?.direction === "INFLOW";
+  };
 
   // ---- Range window derived from the selected filter ----
   const range = useMemo(() => {
@@ -73,8 +87,7 @@ export default function ProjectDetailScreen() {
           end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime(),
         };
       case "CUSTOM": {
-        // Partial ranges allowed: only start → [start, ∞)
-        //                         only end   → (−∞, end]
+        // Partial ranges allowed: only start → [start, ∞), only end → (−∞, end]
         const start = customStart ? customStart.getTime() : 0;
         const end = customEnd
           ? new Date(
@@ -118,7 +131,8 @@ export default function ProjectDetailScreen() {
 
   // ---- Summary for the active range ----
   // Balances: initial + Σ(deltas within range) — matches dashboard behaviour.
-  // Loans:   only loans inside the range.
+  // Loans:   derived from each type's countsAsLoanGiven/Received flags,
+  //          NOT hardcoded to INCOME / LOAN_RECEIVED ids.
   const summary = useMemo(() => {
     let cash = project?.initialCash ?? 0;
     let bank = project?.initialBank ?? 0;
@@ -129,7 +143,11 @@ export default function ProjectDetailScreen() {
       const ts = new Date(t.date).getTime();
       if (ts < range.start || ts > range.end) return;
 
-      if (t.type === "TRANSFER") {
+      const def = resolveType(project, t.type);
+      // Unknown or informational-only type: no balance effect.
+      if (!def || !def.affectsBalance) return;
+
+      if (def.id === "TRANSFER") {
         if (t.method === "BANK") {
           // Deposit cash → bank
           bank += t.amount;
@@ -140,14 +158,14 @@ export default function ProjectDetailScreen() {
           bank -= t.amount;
         }
       } else {
-        const isInflow = t.type === "INCOME" || t.type === "LOAN_RECEIVED";
+        const isInflow = def.direction === "INFLOW";
         const delta = isInflow ? t.amount : -t.amount;
         if (t.method === "CASH") cash += delta;
         else bank += delta;
       }
 
-      if (t.type === "LOAN_GIVEN") given += t.amount;
-      if (t.type === "LOAN_RECEIVED") received += t.amount;
+      if (def.countsAsLoanGiven) given += t.amount;
+      if (def.countsAsLoanReceived) received += t.amount;
     });
 
     return { cash, bank, given, received, net: received - given };
@@ -163,37 +181,6 @@ export default function ProjectDetailScreen() {
     const e = customEnd ? customEnd.toISOString().split("T")[0] : "...";
     return `${s} ← ${e}`;
   }, [timeFilter, customStart, customEnd]);
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "INCOME":
-        return "إستلام مبلغ";
-      case "GIVEAWAY":
-        return "تسليم مبلغ";
-      case "EXPENSE":
-        return "البقالة";
-      case "BILL":
-        return "فاتورة";
-      case "PAYROLL":
-        return "رواتب";
-      case "TRANSFER":
-        return "تحويل";
-      case "BANK_FEE":
-        return "رسوم تحويل بنكي";
-      case "ABDU":
-        return "منصرف خاص ";
-      case "MEDICAL":
-        return "علاجات وأدوية";
-      case "TRANSPORTATION":
-        return "مواصلات";
-      case "LOAN_GIVEN":
-        return "قرض مُعطى";
-      case "LOAN_RECEIVED":
-        return "قرض مأخوذ";
-      default:
-        return type;
-    }
-  };
 
   const handleLoadMore = () => {
     if (visibleCount < filteredTransactions.length) {
@@ -241,12 +228,20 @@ export default function ProjectDetailScreen() {
       />
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.reportBtn} onPress={openReport}>
-            <Text style={styles.reportBtnText}>معاينة التقرير</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.gearBtn}
+              onPress={() => router.push(`/project/${project.id}/settings`)}
+              accessibilityLabel="إعدادات أنواع المعاملات"
+            >
+              <MaterialIcons name="settings" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reportBtn} onPress={openReport}>
+              <Text style={styles.reportBtnText}>معاينة التقرير</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerTitle}>العمليات</Text>
         </View>
-
         {/* ====== SUMMARY CARD ====== */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryPeriodRow}>
@@ -419,50 +414,54 @@ export default function ProjectDetailScreen() {
           contentContainerStyle={{ paddingBottom: 80 }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.txCard}
-              onLongPress={() => {
-                setSelectedTransaction(item);
-                setModalVisible(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.txRow}>
-                <TouchableOpacity
-                  onPress={() => removeTransaction(item.id)}
-                  style={styles.deleteBtn}
-                >
-                  <Text style={styles.deleteBtnText}>حذف</Text>
-                </TouchableOpacity>
+          renderItem={({ item }) => {
+            const def = getTypeDef(item.type);
+            const inflow = def?.direction === "INFLOW";
+            return (
+              <TouchableOpacity
+                style={styles.txCard}
+                onLongPress={() => {
+                  setSelectedTransaction(item);
+                  setModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.txRow}>
+                  <TouchableOpacity
+                    onPress={() => removeTransaction(item.id)}
+                    style={styles.deleteBtn}
+                  >
+                    <Text style={styles.deleteBtnText}>حذف</Text>
+                  </TouchableOpacity>
 
-                <View style={styles.txInfo}>
-                  <Text style={styles.txDesc}>{item.description}</Text>
-                  <View style={styles.txMetaRow}>
-                    <Text style={styles.txType}>{getTypeLabel(item.type)}</Text>
-                    <Text style={styles.txDate}>
-                      {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
-                      {item.method === "CASH" ? "نقدي" : "بنكي"}
-                    </Text>
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txDesc}>{item.description}</Text>
+                    <View style={styles.txMetaRow}>
+                      <Text
+                        style={[styles.txType, def && { color: def.color }]}
+                      >
+                        {getTypeLabel(item.type)}
+                      </Text>
+                      <Text style={styles.txDate}>
+                        {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
+                        {item.method === "CASH" ? "نقدي" : "بنكي"}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <Text
-                  style={[
-                    styles.txAmount,
-                    item.type === "INCOME" || item.type === "LOAN_RECEIVED"
-                      ? styles.income
-                      : styles.expense,
-                  ]}
-                >
-                  {item.type === "INCOME" || item.type === "LOAN_RECEIVED"
-                    ? "+"
-                    : "-"}
-                  {formatCurrency(item.amount)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      inflow ? styles.income : styles.expense,
+                    ]}
+                  >
+                    {inflow ? "+" : "-"}
+                    {formatCurrency(item.amount)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>لا توجد معاملات في هذه الفترة</Text>
           }
@@ -737,5 +736,18 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 12,
     overflow: "hidden",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  gearBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

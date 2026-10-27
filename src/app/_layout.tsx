@@ -3,6 +3,8 @@ import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 
+const AVATAR_URI = require("@/assets/images/icon.png");
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -62,6 +64,7 @@ export default function TabLayout() {
         <Tabs.Screen name="project/[id]" options={{ href: null }} />
         <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
         <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
+        <Tabs.Screen name="project/[id]/settings" options={{ href: null }} />
       </Tabs>
     </>
   );

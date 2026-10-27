@@ -1,9 +1,10 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { useStore } from "../store/useStore";
-import { PaymentMethod, Transaction, TransactionType } from "../types";
+import { PaymentMethod, Transaction } from "../types";
 import { formatNumberInput, parseFormattedNumber } from "../utils/format";
 
 interface Props {
@@ -27,9 +28,33 @@ export default function AddTransactionBottomSheet({
   onClose,
   transactionToEdit,
 }: Props) {
-  const { addTransaction, updateTransaction } = useStore();
+  const { addTransaction, updateTransaction, projects } = useStore();
   const amountInputRef = useRef<TextInput>(null);
-  const [txType, setTxType] = useState<TransactionType>("EXPENSE");
+
+  const project = projects.find((p) => p.id === projectId);
+
+  // Active (non-archived) types for the picker.
+  const activeTypes = useMemo(
+    () => (project?.transactionTypes ?? []).filter((t) => !t.archived),
+    [project],
+  );
+
+  // If the transaction being edited references an archived type, we still
+  // want it visible so the user isn't confused by the selection vanishing.
+  const archivedEditingType = useMemo(() => {
+    if (!transactionToEdit || !project) return undefined;
+    const def = project.transactionTypes.find(
+      (t) => t.id === transactionToEdit.type,
+    );
+    return def?.archived ? def : undefined;
+  }, [transactionToEdit, project]);
+
+  const visibleTypes = useMemo(() => {
+    if (!archivedEditingType) return activeTypes;
+    return [archivedEditingType, ...activeTypes];
+  }, [activeTypes, archivedEditingType]);
+
+  const [txType, setTxType] = useState<string>("EXPENSE");
   const [txMethod, setTxMethod] = useState<PaymentMethod>("BANK");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
@@ -37,32 +62,38 @@ export default function AddTransactionBottomSheet({
   const [txDate, setTxDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Seed the form when the modal opens.
   useEffect(() => {
-    if (visible) {
-      if (transactionToEdit) {
-        setTxType(transactionToEdit.type);
-        setTxMethod(transactionToEdit.method);
-        setTxAmount(formatNumberInput(transactionToEdit.amount.toString()));
-        setTxDesc(transactionToEdit.description);
-        setTxDate(new Date(transactionToEdit.date));
-      } else {
-        setTxAmount("");
-        setTxDesc("");
-        setTxDate(new Date());
-        setTxType("EXPENSE");
-        setTxMethod("BANK");
-      }
-      setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 300);
+    if (!visible) return;
+
+    if (transactionToEdit) {
+      setTxType(transactionToEdit.type);
+      setTxMethod(transactionToEdit.method);
+      setTxAmount(formatNumberInput(transactionToEdit.amount.toString()));
+      setTxDesc(transactionToEdit.description);
+      setTxDate(new Date(transactionToEdit.date));
+    } else {
+      setTxAmount("");
+      setTxDesc("");
+      setTxDate(new Date());
+      // Use the first active type; fall back to the legacy default if the
+      // user archived everything (shouldn't happen, but keeps us safe).
+      setTxType(activeTypes[0]?.id ?? "EXPENSE");
+      setTxMethod("BANK");
     }
+
+    const timeout = setTimeout(() => {
+      amountInputRef.current?.focus();
+    }, 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, transactionToEdit]);
 
   const handleSave = () => {
     const amountNum = parseFormattedNumber(txAmount);
     if (!amountNum || isNaN(amountNum)) return;
 
-    const transactionData = {
+    const transactionData: Transaction = {
       id: transactionToEdit ? transactionToEdit.id : Date.now().toString(),
       projectId,
       type: txType,
@@ -79,10 +110,11 @@ export default function AddTransactionBottomSheet({
       addTransaction(transactionData);
     }
 
+    // Reset local state
     setTxAmount("");
     setTxDesc("");
     setTxDate(new Date());
-    setTxType("EXPENSE");
+    setTxType(activeTypes[0]?.id ?? "EXPENSE");
     setTxMethod("CASH");
     setShowDatePicker(false);
     onClose();
@@ -97,6 +129,8 @@ export default function AddTransactionBottomSheet({
     }
   };
 
+  const isTransfer = txType === "TRANSFER";
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
@@ -108,147 +142,145 @@ export default function AddTransactionBottomSheet({
             {transactionToEdit ? "تعديل المعاملة" : "إضافة معاملة جديدة"}
           </Text>
 
-          <Text style={styles.modalLabel}>نوع المعاملة</Text>
-          <View style={styles.row}>
-            {[
-              "EXPENSE",
-              "INCOME",
-              "ABDU",
-              "MEDICAL",
-              "PAYROLL",
-              "BILL",
-              "LOAN_GIVEN",
-              "LOAN_RECEIVED",
-              "TRANSPORTATION",
-              "TRANSFER",
-              "BANK_FEE",
-            ].map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[styles.chip, txType === type && styles.chipActive]}
-                onPress={() => setTxType(type as TransactionType)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    txType === type && styles.chipTextActive,
-                  ]}
-                >
-                  {type === "INCOME"
-                    ? "إستلام مبلغ"
-                    : type === "GIVEAWAY"
-                      ? "تسليم مبلغ"
-                      : type === "EXPENSE"
-                        ? "البقالة"
-                        : type === "PAYROLL"
-                          ? "رواتب"
-                          : type === "ABDU"
-                            ? "منصرف خاص"
-                            : type === "MEDICAL"
-                              ? "علاجات وأدوية"
-                              : type === "BANK_FEE"
-                                ? "رسوم تحويل بنكك"
-                                : type === "TRANSPORTATION"
-                                  ? "مواصلات"
-                                  : type === "BILL"
-                                    ? "فاتورة"
-                                    : type === "LOAN_GIVEN"
-                                      ? "قرض مُعطى"
-                                      : type === "LOAN_RECEIVED"
-                                        ? "قرض مأخوذ"
-                                        : "سحب كاش/إبداع بنكي"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.modalLabel}>
-            {txType === "TRANSFER" ? "تحويل إلى" : "طريقة الدفع"}
-          </Text>
-          <View style={styles.row}>
-            {["CASH", "BANK"].map((method) => (
-              <TouchableOpacity
-                key={method}
-                style={[styles.chip, txMethod === method && styles.chipActive]}
-                onPress={() => setTxMethod(method as PaymentMethod)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    txMethod === method && styles.chipTextActive,
-                  ]}
-                >
-                  {method === "CASH"
-                    ? txType === "TRANSFER"
-                      ? "الصندوق (سحب من البنك)"
-                      : "نقدي"
-                    : txType === "TRANSFER"
-                      ? "البنك (إيداع نقدي)"
-                      : "بنكي"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            ref={amountInputRef}
-            style={styles.input}
-            placeholder="المبلغ"
-            keyboardType="numeric"
-            value={txAmount}
-            onChangeText={(text) => setTxAmount(formatNumberInput(text))}
-            textAlign="right"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="الوصف (مواد، مورد، الخ)"
-            value={txDesc}
-            onChangeText={setTxDesc}
-            textAlign="right"
-          />
-
-          <TouchableOpacity
-            style={styles.dateInput}
-            onPress={() => setShowDatePicker(true)}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.dateText}>
-              {txDate.toISOString().split("T")[0]}
-            </Text>
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <View style={styles.datePickerContainer}>
-              <DateTimePicker
-                value={txDate}
-                mode="date"
-                display="default"
-                onValueChange={handleDateChange}
-              />
-              {Platform.OS === "ios" && (
-                <TouchableOpacity
-                  style={styles.doneButton}
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.doneButtonText}>تم</Text>
-                </TouchableOpacity>
+            {/* ---------- TYPE PICKER (driven by project.transactionTypes) ---------- */}
+            <Text style={styles.modalLabel}>نوع المعاملة</Text>
+            <View style={styles.row}>
+              {visibleTypes.length === 0 && (
+                <Text style={styles.emptyTypesText}>
+                  لا توجد أنواع متاحة لهذا المشروع. أضف نوعاً من إعدادات
+                  المشروع.
+                </Text>
               )}
+              {visibleTypes.map((def) => {
+                const isActive = txType === def.id;
+                return (
+                  <TouchableOpacity
+                    key={def.id}
+                    style={[
+                      styles.chip,
+                      isActive && {
+                        backgroundColor: `${def.color}22`, // ~13% tint
+                        borderColor: def.color,
+                      },
+                      isActive && styles.chipActiveOutline,
+                    ]}
+                    onPress={() => setTxType(def.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isActive && { color: def.color, fontWeight: "bold" },
+                      ]}
+                    >
+                      {def.label}
+                      {def.archived ? "  (مؤرشف)" : ""}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          )}
 
-          <View style={[styles.row, { marginTop: 16 }]}>
+            {/* ---------- METHOD PICKER ---------- */}
+            <Text style={styles.modalLabel}>
+              {isTransfer ? "تحويل إلى" : "طريقة الدفع"}
+            </Text>
+            <View style={styles.row}>
+              {(["CASH", "BANK"] as PaymentMethod[]).map((method) => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.chip,
+                    txMethod === method && styles.chipActive,
+                  ]}
+                  onPress={() => setTxMethod(method)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      txMethod === method && styles.chipTextActive,
+                    ]}
+                  >
+                    {method === "CASH"
+                      ? isTransfer
+                        ? "الصندوق (سحب من البنك)"
+                        : "نقدي"
+                      : isTransfer
+                        ? "البنك (إيداع نقدي)"
+                        : "بنكي"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ---------- AMOUNT ---------- */}
+            <TextInput
+              ref={amountInputRef}
+              style={styles.input}
+              placeholder="المبلغ"
+              keyboardType="numeric"
+              value={txAmount}
+              onChangeText={(text) => setTxAmount(formatNumberInput(text))}
+              textAlign="right"
+            />
+
+            {/* ---------- DESCRIPTION ---------- */}
+            <TextInput
+              style={styles.input}
+              placeholder="الوصف (مواد، مورد، الخ)"
+              value={txDesc}
+              onChangeText={setTxDesc}
+              textAlign="right"
+            />
+
+            {/* ---------- DATE ---------- */}
             <TouchableOpacity
-              style={[styles.modalBtn, styles.saveBtn]}
-              onPress={handleSave}
+              style={styles.dateInput}
+              onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.saveBtnText}>حفظ</Text>
+              <Text style={styles.dateText}>
+                {txDate.toISOString().split("T")[0]}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalBtn, styles.cancelBtn]}
-              onPress={onClose}
-            >
-              <Text style={styles.cancelBtnText}>إلغاء</Text>
-            </TouchableOpacity>
-          </View>
+
+            {showDatePicker && (
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={txDate}
+                  mode="date"
+                  display="default"
+                  onValueChange={handleDateChange}
+                />
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    style={styles.doneButton}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.doneButtonText}>تم</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* ---------- ACTIONS ---------- */}
+            <View style={[styles.row, { marginTop: 16 }]}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.saveBtn]}
+                onPress={handleSave}
+              >
+                <Text style={styles.saveBtnText}>حفظ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={onClose}
+              >
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -266,6 +298,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    maxHeight: "90%",
   },
   modalHeader: {
     fontSize: 20,
@@ -286,6 +319,12 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  emptyTypesText: {
+    color: "#9CA3AF",
+    fontSize: 13,
+    textAlign: "right",
+    flex: 1,
+  },
   datePickerContainer: {
     alignItems: "center",
     marginBottom: 12,
@@ -298,7 +337,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
+  // Kept from the original so the method picker still highlights.
   chipActive: { backgroundColor: "#dbeafe", borderColor: "#3b82f6" },
+  // Additional outline used by the type picker when a colored type is active.
+  chipActiveOutline: { borderWidth: 1.5 },
   chipText: { color: "#4b5563", fontSize: 14 },
   chipTextActive: { color: "#1d4ed8", fontWeight: "bold" },
   input: {
@@ -324,7 +366,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontSize: 14,
   },
-
   doneButton: {
     marginTop: 8,
     padding: 8,

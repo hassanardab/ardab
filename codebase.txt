@@ -24,7 +24,8 @@
 │   │   ├── messages.tsx
 │   │   └── project
 │   │       ├── [id]
-│   │       │   └── report.tsx
+│   │       │   ├── report.tsx
+│   │       │   └── settings.tsx
 │   │       └── [id].tsx
 │   ├── components
 │   │   ├── AddTransactionBottomSheet.tsx
@@ -64,7 +65,7 @@
 ├── todos.md
 └── tsconfig.json
 
-19 directories, 46 files
+19 directories, 47 files
 
 === ./.claude/settings.json ===
 {
@@ -211,8 +212,9 @@ This command will move the starter code to the **app-example** directory and cre
 
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:        me oh
- B cB
+To learn more about developing your project with Expo, look at the following resources: me oh
+B cB
+
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
@@ -280,17 +282,20 @@ adb reverse tcp:8081 tcp:8081
 
 ## v2.10
 
-[] generate ESA APK dev file
-[] dev works
-[] make the invoice # & paid amount on the form
-[] generate release version
-[] hide the app bar on the dashboard
+[x] generate ESA APK dev file
+[x] dev works
+[x] make the invoice # & paid amount on the form
+[x] generate release version
+[x] hide the app bar on the dashboard
 []
 
 ## v2.11
 
-[] the contacts asks for phone contact ppermission the it list all of them
+[x] the contacts asks for phone contact ppermission the it list all of them
 [] you can change the catefhori on the transaction form
+
+[] we have profile page with avatar circlar and we have the page
+[]
 
 === ./app.json ===
 {
@@ -351,33 +356,44 @@ adb reverse tcp:8081 tcp:8081
 }
 
 === ./.github/workflows/build-apk.yml ===
-name: Build Android Debug APK
+# Name of the workflow visible in the GitHub Actions tab
+name: Build Android Release APK
 
+# Controls when the workflow will run
 on:
   push:
-    branches: ["main", "master"] # Change to your default branch if different
-  workflow_dispatch:
+    branches: ["main", "master"] # Triggers automatically on push to main or master
+  workflow_dispatch: # Allows you to manually trigger the build from GitHub UI anytime
 
 jobs:
-  build:
+  build-release:
+    # Runs on GitHub's fast, pre-configured Linux x86_64 servers
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Pull your repository code into the runner
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # Step 2: Setup Node.js v20 (Required by Expo/Metro for newer methods like toReversed)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18 # Match your project's Node version
+          node-version: 20 # Upgraded from 18 to 20 to satisfy modern Expo tooling requirements
           cache: "npm"
 
+      # Step 3: Setup Java Development Kit (JDK 17 is required for modern React Native/Expo)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
 
+      # Step 4: Install your project dependencies from package.json
+      - name: Install Dependencies
+        run: npm install
+
+      # Step 5: Compile the app into an optimized Release APK
       - name: Build Release APK
         run: |
           cd android
@@ -391,6 +407,58 @@ jobs:
         with:
           name: release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+
+# # Name of the workflow visible in the GitHub Actions tab
+# name: Build Android Debug APK
+
+# # Controls when the workflow will run
+# on:
+#   push:
+#     branches: ["main", "master"] # Triggers automatically on push to main or master
+#   workflow_dispatch: # Allows you to manually trigger the build from GitHub UI anytime
+
+# jobs:
+#   build-debug:
+#     # Runs on GitHub's fast, pre-configured Linux x86_64 servers
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Step 1: Pull your repository code into the runner
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+
+#       # Step 2: Setup Node.js v20 (Required by Expo/Metro for newer methods like toReversed)
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 20 # Node 20 satisfies modern Expo & Metro requirements
+#           cache: "npm"
+
+#       # Step 3: Setup Java Development Kit (JDK 17 is required for modern React Native/Expo)
+#       - name: Set up JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           distribution: "temurin"
+#           java-version: "17"
+
+#       # Step 4: Install your project dependencies from package.json
+#       - name: Install Dependencies
+#         run: npm install
+
+#       # Step 5: Compile the app into a Debug APK
+#       - name: Build Debug APK
+#         run: |
+#           cd android
+#           chmod +x gradlew
+#           # assembleDebug builds the debug version of the app
+#           ./gradlew assembleDebug
+
+#       # Step 6: Package and upload the debug APK as a downloadable artifact
+#       - name: Upload Debug APK Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: debug-apk
+#           path: android/app/build/outputs/apk/debug/app-debug.apk
 
 === ./package.json ===
 {
@@ -572,6 +640,8 @@ import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 
+const AVATAR_URI = require("@/assets/images/icon.png");
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -631,6 +701,7 @@ export default function TabLayout() {
         <Tabs.Screen name="project/[id]" options={{ href: null }} />
         <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
         <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
+        <Tabs.Screen name="project/[id]/settings" options={{ href: null }} />
       </Tabs>
     </>
   );
@@ -654,7 +725,7 @@ import {
   View,
 } from "react-native";
 import AddTransactionBottomSheet from "../components/AddTransactionBottomSheet";
-import { useStore } from "../store/useStore";
+import { resolveType, useStore } from "../store/useStore";
 import { Project } from "../types";
 import { formatCurrency } from "../utils/format";
 
@@ -800,7 +871,9 @@ export default function DashboardScreen() {
     }
   };
 
-  // Compute all project balances in one pass, keyed by projectId
+  // Compute all project balances in one pass, keyed by projectId.
+  // Direction comes from each project's own transactionTypes, so custom
+  // and archived types are handled consistently with the store.
   const projectBalances = useMemo(() => {
     const { start, end } = getRange();
     const result: Record<
@@ -819,7 +892,11 @@ export default function DashboardScreen() {
           const ts = new Date(t.date).getTime();
           if (ts < start || ts > end) return;
 
-          if (t.type === "TRANSFER") {
+          const def = resolveType(project, t.type);
+          // Unknown or informational-only type: no balance effect.
+          if (!def || !def.affectsBalance) return;
+
+          if (def.id === "TRANSFER") {
             if (t.method === "BANK") {
               bank += t.amount;
               cash -= t.amount;
@@ -828,14 +905,14 @@ export default function DashboardScreen() {
               bank -= t.amount;
             }
           } else {
-            const isInflow = t.type === "INCOME" || t.type === "LOAN_RECEIVED";
+            const isInflow = def.direction === "INFLOW";
             const delta = isInflow ? t.amount : -t.amount;
             if (t.method === "CASH") cash += delta;
             else bank += delta;
           }
 
-          if (t.type === "LOAN_RECEIVED") loanBalance += t.amount;
-          if (t.type === "LOAN_GIVEN") loanBalance -= t.amount;
+          if (def.countsAsLoanReceived) loanBalance += t.amount;
+          if (def.countsAsLoanGiven) loanBalance -= t.amount;
         });
 
       result[project.id] = { cash, bank, loanBalance };
@@ -1831,6 +1908,7 @@ const styles = StyleSheet.create({
 });
 
 === ./src/app/project/[id].tsx ===
+import { MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -1844,7 +1922,7 @@ import {
   View,
 } from "react-native";
 import AddTransactionBottomSheet from "../../components/AddTransactionBottomSheet";
-import { useStore } from "../../store/useStore";
+import { resolveType, useStore } from "../../store/useStore";
 import { Transaction } from "../../types";
 import { formatCurrency } from "../../utils/format";
 
@@ -1869,6 +1947,19 @@ export default function ProjectDetailScreen() {
   const [showEndPicker, setShowEndPicker] = useState(false);
 
   const project = projects.find((p) => p.id === id);
+
+  // ---- Resolve a type definition from THIS project's catalog ----
+  const getTypeDef = (typeId: string) => resolveType(project, typeId);
+
+  const getTypeLabel = (typeId: string) => {
+    const def = getTypeDef(typeId);
+    return def?.label ?? typeId;
+  };
+
+  const isInflowTx = (typeId: string) => {
+    const def = getTypeDef(typeId);
+    return def?.direction === "INFLOW";
+  };
 
   // ---- Range window derived from the selected filter ----
   const range = useMemo(() => {
@@ -1906,8 +1997,7 @@ export default function ProjectDetailScreen() {
           end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime(),
         };
       case "CUSTOM": {
-        // Partial ranges allowed: only start → [start, ∞)
-        //                         only end   → (−∞, end]
+        // Partial ranges allowed: only start → [start, ∞), only end → (−∞, end]
         const start = customStart ? customStart.getTime() : 0;
         const end = customEnd
           ? new Date(
@@ -1951,7 +2041,8 @@ export default function ProjectDetailScreen() {
 
   // ---- Summary for the active range ----
   // Balances: initial + Σ(deltas within range) — matches dashboard behaviour.
-  // Loans:   only loans inside the range.
+  // Loans:   derived from each type's countsAsLoanGiven/Received flags,
+  //          NOT hardcoded to INCOME / LOAN_RECEIVED ids.
   const summary = useMemo(() => {
     let cash = project?.initialCash ?? 0;
     let bank = project?.initialBank ?? 0;
@@ -1962,7 +2053,11 @@ export default function ProjectDetailScreen() {
       const ts = new Date(t.date).getTime();
       if (ts < range.start || ts > range.end) return;
 
-      if (t.type === "TRANSFER") {
+      const def = resolveType(project, t.type);
+      // Unknown or informational-only type: no balance effect.
+      if (!def || !def.affectsBalance) return;
+
+      if (def.id === "TRANSFER") {
         if (t.method === "BANK") {
           // Deposit cash → bank
           bank += t.amount;
@@ -1973,14 +2068,14 @@ export default function ProjectDetailScreen() {
           bank -= t.amount;
         }
       } else {
-        const isInflow = t.type === "INCOME" || t.type === "LOAN_RECEIVED";
+        const isInflow = def.direction === "INFLOW";
         const delta = isInflow ? t.amount : -t.amount;
         if (t.method === "CASH") cash += delta;
         else bank += delta;
       }
 
-      if (t.type === "LOAN_GIVEN") given += t.amount;
-      if (t.type === "LOAN_RECEIVED") received += t.amount;
+      if (def.countsAsLoanGiven) given += t.amount;
+      if (def.countsAsLoanReceived) received += t.amount;
     });
 
     return { cash, bank, given, received, net: received - given };
@@ -1996,37 +2091,6 @@ export default function ProjectDetailScreen() {
     const e = customEnd ? customEnd.toISOString().split("T")[0] : "...";
     return `${s} ← ${e}`;
   }, [timeFilter, customStart, customEnd]);
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "INCOME":
-        return "إستلام مبلغ";
-      case "GIVEAWAY":
-        return "تسليم مبلغ";
-      case "EXPENSE":
-        return "البقالة";
-      case "BILL":
-        return "فاتورة";
-      case "PAYROLL":
-        return "رواتب";
-      case "TRANSFER":
-        return "تحويل";
-      case "BANK_FEE":
-        return "رسوم تحويل بنكي";
-      case "ABDU":
-        return "منصرف خاص ";
-      case "MEDICAL":
-        return "علاجات وأدوية";
-      case "TRANSPORTATION":
-        return "مواصلات";
-      case "LOAN_GIVEN":
-        return "قرض مُعطى";
-      case "LOAN_RECEIVED":
-        return "قرض مأخوذ";
-      default:
-        return type;
-    }
-  };
 
   const handleLoadMore = () => {
     if (visibleCount < filteredTransactions.length) {
@@ -2074,12 +2138,20 @@ export default function ProjectDetailScreen() {
       />
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.reportBtn} onPress={openReport}>
-            <Text style={styles.reportBtnText}>معاينة التقرير</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.gearBtn}
+              onPress={() => router.push(`/project/${project.id}/settings`)}
+              accessibilityLabel="إعدادات أنواع المعاملات"
+            >
+              <MaterialIcons name="settings" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.reportBtn} onPress={openReport}>
+              <Text style={styles.reportBtnText}>معاينة التقرير</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerTitle}>العمليات</Text>
         </View>
-
         {/* ====== SUMMARY CARD ====== */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryPeriodRow}>
@@ -2252,50 +2324,54 @@ export default function ProjectDetailScreen() {
           contentContainerStyle={{ paddingBottom: 80 }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.txCard}
-              onLongPress={() => {
-                setSelectedTransaction(item);
-                setModalVisible(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.txRow}>
-                <TouchableOpacity
-                  onPress={() => removeTransaction(item.id)}
-                  style={styles.deleteBtn}
-                >
-                  <Text style={styles.deleteBtnText}>حذف</Text>
-                </TouchableOpacity>
+          renderItem={({ item }) => {
+            const def = getTypeDef(item.type);
+            const inflow = def?.direction === "INFLOW";
+            return (
+              <TouchableOpacity
+                style={styles.txCard}
+                onLongPress={() => {
+                  setSelectedTransaction(item);
+                  setModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.txRow}>
+                  <TouchableOpacity
+                    onPress={() => removeTransaction(item.id)}
+                    style={styles.deleteBtn}
+                  >
+                    <Text style={styles.deleteBtnText}>حذف</Text>
+                  </TouchableOpacity>
 
-                <View style={styles.txInfo}>
-                  <Text style={styles.txDesc}>{item.description}</Text>
-                  <View style={styles.txMetaRow}>
-                    <Text style={styles.txType}>{getTypeLabel(item.type)}</Text>
-                    <Text style={styles.txDate}>
-                      {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
-                      {item.method === "CASH" ? "نقدي" : "بنكي"}
-                    </Text>
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txDesc}>{item.description}</Text>
+                    <View style={styles.txMetaRow}>
+                      <Text
+                        style={[styles.txType, def && { color: def.color }]}
+                      >
+                        {getTypeLabel(item.type)}
+                      </Text>
+                      <Text style={styles.txDate}>
+                        {new Date(item.date).toLocaleDateString("ar-EG")} -{" "}
+                        {item.method === "CASH" ? "نقدي" : "بنكي"}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <Text
-                  style={[
-                    styles.txAmount,
-                    item.type === "INCOME" || item.type === "LOAN_RECEIVED"
-                      ? styles.income
-                      : styles.expense,
-                  ]}
-                >
-                  {item.type === "INCOME" || item.type === "LOAN_RECEIVED"
-                    ? "+"
-                    : "-"}
-                  {formatCurrency(item.amount)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      inflow ? styles.income : styles.expense,
+                    ]}
+                  >
+                    {inflow ? "+" : "-"}
+                    {formatCurrency(item.amount)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>لا توجد معاملات في هذه الفترة</Text>
           }
@@ -2571,6 +2647,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  gearBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
 
 === ./src/app/project/[id]/report.tsx ===
@@ -2737,6 +2826,740 @@ const styles = StyleSheet.create({
   exportBtnText: { color: "white", fontSize: 16, fontWeight: "bold" },
 });
 
+=== ./src/app/project/[id]/settings.tsx ===
+// src/app/project/[id]/settings.tsx
+import { Stack, useLocalSearchParams } from "expo-router";
+import { useMemo, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useStore } from "../../../store/useStore";
+import { TransactionDirection, TransactionTypeDef } from "../../../types";
+
+const DIRECTIONS: { id: TransactionDirection; label: string }[] = [
+  { id: "INFLOW", label: "داخل (يزيد الرصيد)" },
+  { id: "OUTFLOW", label: "خارج (ينقص الرصيد)" },
+  { id: "NEUTRAL", label: "محايد (لا يؤثر)" },
+];
+
+const PALETTE = [
+  "#10b981", // green (income)
+  "#8B5CF6", // violet (loan received)
+  "#EF4444", // red (outflow)
+  "#2563eb", // blue (transfer)
+  "#f59e0b", // amber
+  "#0ea5e9", // sky
+  "#ec4899", // pink
+  "#64748b", // slate
+];
+
+export default function ProjectSettingsScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const {
+    projects,
+    transactions,
+    addTransactionType,
+    updateTransactionType,
+    removeTransactionType,
+    reorderTransactionTypes,
+  } = useStore();
+
+  const project = projects.find((p) => p.id === id);
+
+  // -------- Add form state --------
+  const [newLabel, setNewLabel] = useState("");
+  const [newDirection, setNewDirection] =
+    useState<TransactionDirection>("OUTFLOW");
+  const [newColor, setNewColor] = useState(PALETTE[2]);
+
+  // -------- Inline edit state --------
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editColor, setEditColor] = useState<string>("");
+  const [editDirection, setEditDirection] =
+    useState<TransactionDirection>("OUTFLOW");
+
+  // Map of type id -> count of transactions, computed once per render pass.
+  const usageCounts = useMemo(() => {
+    if (!project) return {} as Record<string, number>;
+    const counts: Record<string, number> = {};
+    transactions.forEach((t) => {
+      if (t.projectId !== project.id) return;
+      counts[t.type] = (counts[t.type] ?? 0) + 1;
+    });
+    return counts;
+  }, [transactions, project]);
+
+  if (!project) {
+    return (
+      <View style={styles.center}>
+        <Text>المشروع غير موجود</Text>
+      </View>
+    );
+  }
+
+  // Generate a stable id for a new custom type. Uppercased slug + timestamp
+  // so the user can re-create a type with the same label later without a
+  // collision.
+  const makeId = (label: string) => {
+    const slug = label
+      .trim()
+      .toUpperCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "_")
+      .replace(/^_+|_+$/g, "");
+    return `${slug || "TYPE"}_${Date.now().toString(36)}`;
+  };
+
+  const handleAdd = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+
+    // Duplicate label guard (case-insensitive) — cheap and prevents user
+    // confusion when two chips read the same.
+    const dup = project.transactionTypes.some(
+      (t) => t.label.trim() === label && !t.archived,
+    );
+    if (dup) {
+      Alert.alert("نوع مكرر", `يوجد نوع بنفس الاسم "${label}" بالفعل.`);
+      return;
+    }
+
+    const def: TransactionTypeDef = {
+      id: makeId(label),
+      label,
+      direction: newDirection,
+      affectsBalance: newDirection !== "NEUTRAL",
+      color: newColor,
+    };
+    addTransactionType(project.id, def);
+    setNewLabel("");
+    setNewDirection("OUTFLOW");
+    setNewColor(PALETTE[2]);
+  };
+
+  const startEdit = (def: TransactionTypeDef) => {
+    setEditingId(def.id);
+    setEditLabel(def.label);
+    setEditColor(def.color);
+    setEditDirection(def.direction);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditLabel("");
+    setEditColor("");
+    setEditDirection("OUTFLOW");
+  };
+
+  const commitEdit = (def: TransactionTypeDef) => {
+    const label = editLabel.trim();
+    if (!label) return;
+
+    // Duplicate label guard, excluding the row we're editing.
+    const dup = project.transactionTypes.some(
+      (t) => t.id !== def.id && t.label.trim() === label && !t.archived,
+    );
+    if (dup) {
+      Alert.alert("نوع مكرر", `يوجد نوع بنفس الاسم "${label}" بالفعل.`);
+      return;
+    }
+
+    updateTransactionType(project.id, def.id, {
+      label,
+      color: editColor,
+      // System types keep their direction — that direction is baked into
+      // the loan/report semantics, so let them only change cosmetic fields.
+      ...(def.isSystem
+        ? {}
+        : {
+            direction: editDirection,
+            affectsBalance: editDirection !== "NEUTRAL",
+          }),
+    });
+    cancelEdit();
+  };
+
+  const handleRemove = (def: TransactionTypeDef) => {
+    const inUse = (usageCounts[def.id] ?? 0) > 0;
+
+    // System types and types used by any existing transaction are archived,
+    // not deleted, so historical rows keep a resolvable label.
+    if (def.isSystem || inUse) {
+      Alert.alert(
+        "أرشفة النوع",
+        def.isSystem
+          ? `"${def.label}" نوع نظامي — سيتم إخفاؤه من القوائم مع الحفاظ على المعاملات القديمة.`
+          : `"${def.label}" مستخدم في ${usageCounts[def.id]} معاملة — سيتم إخفاؤه من القوائم بدلاً من حذفه.`,
+        [
+          { text: "إلغاء", style: "cancel" },
+          {
+            text: "أرشفة",
+            style: "destructive",
+            onPress: () => removeTransactionType(project.id, def.id),
+          },
+        ],
+      );
+      return;
+    }
+
+    Alert.alert("حذف النوع", `هل أنت متأكد من حذف "${def.label}"؟`, [
+      { text: "إلغاء", style: "cancel" },
+      {
+        text: "حذف",
+        style: "destructive",
+        onPress: () => removeTransactionType(project.id, def.id),
+      },
+    ]);
+  };
+
+  const handleUnarchive = (def: TransactionTypeDef) => {
+    updateTransactionType(project.id, def.id, { archived: false });
+  };
+
+  const move = (def: TransactionTypeDef, dir: -1 | 1) => {
+    const ids = project.transactionTypes.map((t) => t.id);
+    const idx = ids.indexOf(def.id);
+    const swap = idx + dir;
+    if (swap < 0 || swap >= ids.length) return;
+    [ids[idx], ids[swap]] = [ids[swap], ids[idx]];
+    reorderTransactionTypes(project.id, ids);
+  };
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerTitleAlign: "center",
+          headerTitle: "أنواع المعاملات",
+        }}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ------- Existing types ------- */}
+        <Text style={styles.sectionTitle}>أنواع المعاملة الحالية</Text>
+        <Text style={styles.sectionHint}>
+          اسحب باستخدام الأسهم لإعادة الترتيب. الأنواع النظامية لا يمكن حذفها
+          نهائياً، بل تُؤرشف فقط.
+        </Text>
+
+        {project.transactionTypes.map((def, index) => {
+          const isEditing = editingId === def.id;
+          const usage = usageCounts[def.id] ?? 0;
+          return (
+            <View
+              key={def.id}
+              style={[styles.card, def.archived && styles.cardArchived]}
+            >
+              {/* Row 1: color dot + label + badges */}
+              <View style={styles.cardTopRow}>
+                <View style={[styles.dot, { backgroundColor: def.color }]} />
+
+                {isEditing ? (
+                  <TextInput
+                    style={styles.inlineInput}
+                    value={editLabel}
+                    onChangeText={setEditLabel}
+                    autoFocus
+                    textAlign="right"
+                  />
+                ) : (
+                  <Text style={styles.label} numberOfLines={1}>
+                    {def.label}
+                  </Text>
+                )}
+
+                <View style={styles.badges}>
+                  {def.isSystem && (
+                    <View style={[styles.badge, styles.badgeSystem]}>
+                      <Text style={styles.badgeText}>نظامي</Text>
+                    </View>
+                  )}
+                  {def.archived && (
+                    <View style={[styles.badge, styles.badgeArchived]}>
+                      <Text style={styles.badgeText}>مؤرشف</Text>
+                    </View>
+                  )}
+                  {usage > 0 && (
+                    <View style={[styles.badge, styles.badgeUsage]}>
+                      <Text style={styles.badgeText}>{usage}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Row 2: direction badge */}
+              {isEditing ? (
+                <View style={styles.editDirectionRow}>
+                  {DIRECTIONS.map((d) => {
+                    const disabled = def.isSystem && d.id !== def.direction;
+                    return (
+                      <TouchableOpacity
+                        key={d.id}
+                        disabled={disabled}
+                        style={[
+                          styles.dirChip,
+                          editDirection === d.id && styles.dirChipActive,
+                          disabled && styles.dirChipDisabled,
+                        ]}
+                        onPress={() => setEditDirection(d.id)}
+                      >
+                        <Text
+                          style={[
+                            styles.dirChipText,
+                            editDirection === d.id && styles.dirChipTextActive,
+                            disabled && styles.dirChipTextDisabled,
+                          ]}
+                        >
+                          {d.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.dirBadgeRow}>
+                  <View style={styles.dirBadge}>
+                    <Text style={styles.dirBadgeText}>
+                      {def.direction === "INFLOW"
+                        ? "داخل"
+                        : def.direction === "OUTFLOW"
+                          ? "خارج"
+                          : "محايد"}
+                    </Text>
+                  </View>
+                  {!def.affectsBalance && (
+                    <Text style={styles.noEffectText}>لا يؤثر على الرصيد</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Row 3: color swatches (only while editing) */}
+              {isEditing && (
+                <View style={styles.swatchRow}>
+                  {PALETTE.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      onPress={() => setEditColor(c)}
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: c },
+                        editColor === c && styles.swatchSelected,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Row 4: actions */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.smallBtn}
+                  onPress={() => move(def, -1)}
+                  disabled={index === 0}
+                >
+                  <Text
+                    style={[
+                      styles.smallBtnText,
+                      index === 0 && styles.smallBtnTextDisabled,
+                    ]}
+                  >
+                    ↑
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.smallBtn}
+                  onPress={() => move(def, 1)}
+                  disabled={index === project.transactionTypes.length - 1}
+                >
+                  <Text
+                    style={[
+                      styles.smallBtnText,
+                      index === project.transactionTypes.length - 1 &&
+                        styles.smallBtnTextDisabled,
+                    ]}
+                  >
+                    ↓
+                  </Text>
+                </TouchableOpacity>
+
+                {isEditing ? (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.smallBtn, styles.saveSmall]}
+                      onPress={() => commitEdit(def)}
+                    >
+                      <Text style={styles.saveSmallText}>حفظ</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.smallBtn}
+                      onPress={cancelEdit}
+                    >
+                      <Text style={styles.smallBtnText}>إلغاء</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.smallBtn}
+                      onPress={() => startEdit(def)}
+                    >
+                      <Text style={styles.smallBtnText}>تعديل</Text>
+                    </TouchableOpacity>
+
+                    {def.archived ? (
+                      <TouchableOpacity
+                        style={[styles.smallBtn, styles.restoreSmall]}
+                        onPress={() => handleUnarchive(def)}
+                      >
+                        <Text style={styles.restoreSmallText}>استعادة</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.smallBtn, styles.deleteSmall]}
+                        onPress={() => handleRemove(def)}
+                      >
+                        <Text style={styles.deleteSmallText}>
+                          {def.isSystem || usage > 0 ? "أرشفة" : "حذف"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+              </View>
+            </View>
+          );
+        })}
+
+        {/* ------- Add new type ------- */}
+        <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
+          إضافة نوع جديد
+        </Text>
+        <Text style={styles.sectionHint}>
+          الأنواع المخصصة تظهر فوراً في نموذج إضافة المعاملة وتُدرج في التقارير
+          المالية.
+        </Text>
+
+        <View style={styles.formCard}>
+          <TextInput
+            style={styles.input}
+            placeholder="اسم النوع (مثال: صيانة معدات)"
+            value={newLabel}
+            onChangeText={setNewLabel}
+            textAlign="right"
+          />
+
+          <Text style={styles.fieldLabel}>اتجاه الرصيد</Text>
+          <View style={styles.chipWrap}>
+            {DIRECTIONS.map((d) => (
+              <TouchableOpacity
+                key={d.id}
+                style={[
+                  styles.dirChip,
+                  newDirection === d.id && styles.dirChipActive,
+                ]}
+                onPress={() => setNewDirection(d.id)}
+              >
+                <Text
+                  style={[
+                    styles.dirChipText,
+                    newDirection === d.id && styles.dirChipTextActive,
+                  ]}
+                >
+                  {d.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.fieldLabel}>اللون</Text>
+          <View style={styles.swatchRow}>
+            {PALETTE.map((c) => (
+              <TouchableOpacity
+                key={c}
+                onPress={() => setNewColor(c)}
+                style={[
+                  styles.swatch,
+                  { backgroundColor: c },
+                  newColor === c && styles.swatchSelected,
+                ]}
+              />
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.addBtn, !newLabel.trim() && styles.addBtnDisabled]}
+            onPress={handleAdd}
+            disabled={!newLabel.trim()}
+          >
+            <Text style={styles.addBtnText}>+ إضافة النوع</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  content: { padding: 16, paddingBottom: 40 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+    textAlign: "right",
+    marginBottom: 6,
+  },
+  sectionHint: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "right",
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+
+  // ----- Card -----
+  card: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardArchived: {
+    backgroundColor: "#F8FAFC",
+    opacity: 0.85,
+  },
+  cardTopRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+  },
+  dot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  label: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+    textAlign: "right",
+  },
+  inlineInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+    borderBottomWidth: 1,
+    borderBottomColor: "#CBD5E1",
+    paddingVertical: 4,
+  },
+  badges: {
+    flexDirection: "row-reverse",
+    gap: 6,
+    alignItems: "center",
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  badgeSystem: { backgroundColor: "#DBEAFE" },
+  badgeArchived: { backgroundColor: "#FEF3C7" },
+  badgeUsage: { backgroundColor: "#E2E8F0" },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#334155",
+  },
+
+  // ----- Direction rows -----
+  dirBadgeRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+  },
+  dirBadge: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  dirBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  noEffectText: {
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
+
+  editDirectionRow: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
+  },
+
+  // ----- Chips -----
+  chipWrap: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  dirChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  dirChipActive: {
+    backgroundColor: "#0F172A",
+    borderColor: "#0F172A",
+  },
+  dirChipDisabled: {
+    opacity: 0.4,
+  },
+  dirChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  dirChipTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  dirChipTextDisabled: {
+    color: "#94A3B8",
+  },
+
+  // ----- Color swatches -----
+  swatchRow: {
+    flexDirection: "row-reverse",
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  swatchSelected: {
+    borderColor: "#0F172A",
+  },
+
+  // ----- Action row -----
+  actionRow: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  smallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
+    minWidth: 40,
+    alignItems: "center",
+  },
+  smallBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  smallBtnTextDisabled: {
+    color: "#CBD5E1",
+  },
+  saveSmall: { backgroundColor: "#0F172A" },
+  saveSmallText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  deleteSmall: { backgroundColor: "#FEF2F2" },
+  deleteSmallText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
+  restoreSmall: { backgroundColor: "#ECFDF5" },
+  restoreSmallText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#059669",
+  },
+
+  // ----- Add form -----
+  formCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#0F172A",
+    backgroundColor: "#F8FAFC",
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+    textAlign: "right",
+    marginBottom: 8,
+  },
+  addBtn: {
+    backgroundColor: "#0F172A",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 14,
+  },
+  addBtnDisabled: {
+    backgroundColor: "#94A3B8",
+  },
+  addBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+});
+
 === ./src/app/invoice/[id].tsx ===
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -2832,11 +3655,12 @@ const styles = StyleSheet.create({
 
 === ./src/components/AddTransactionBottomSheet.tsx ===
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -2844,7 +3668,7 @@ import {
   View,
 } from "react-native";
 import { useStore } from "../store/useStore";
-import { PaymentMethod, Transaction, TransactionType } from "../types";
+import { PaymentMethod, Transaction } from "../types";
 import { formatNumberInput, parseFormattedNumber } from "../utils/format";
 
 interface Props {
@@ -2860,9 +3684,33 @@ export default function AddTransactionBottomSheet({
   onClose,
   transactionToEdit,
 }: Props) {
-  const { addTransaction, updateTransaction } = useStore();
+  const { addTransaction, updateTransaction, projects } = useStore();
   const amountInputRef = useRef<TextInput>(null);
-  const [txType, setTxType] = useState<TransactionType>("EXPENSE");
+
+  const project = projects.find((p) => p.id === projectId);
+
+  // Active (non-archived) types for the picker.
+  const activeTypes = useMemo(
+    () => (project?.transactionTypes ?? []).filter((t) => !t.archived),
+    [project],
+  );
+
+  // If the transaction being edited references an archived type, we still
+  // want it visible so the user isn't confused by the selection vanishing.
+  const archivedEditingType = useMemo(() => {
+    if (!transactionToEdit || !project) return undefined;
+    const def = project.transactionTypes.find(
+      (t) => t.id === transactionToEdit.type,
+    );
+    return def?.archived ? def : undefined;
+  }, [transactionToEdit, project]);
+
+  const visibleTypes = useMemo(() => {
+    if (!archivedEditingType) return activeTypes;
+    return [archivedEditingType, ...activeTypes];
+  }, [activeTypes, archivedEditingType]);
+
+  const [txType, setTxType] = useState<string>("EXPENSE");
   const [txMethod, setTxMethod] = useState<PaymentMethod>("BANK");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
@@ -2870,32 +3718,38 @@ export default function AddTransactionBottomSheet({
   const [txDate, setTxDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Seed the form when the modal opens.
   useEffect(() => {
-    if (visible) {
-      if (transactionToEdit) {
-        setTxType(transactionToEdit.type);
-        setTxMethod(transactionToEdit.method);
-        setTxAmount(formatNumberInput(transactionToEdit.amount.toString()));
-        setTxDesc(transactionToEdit.description);
-        setTxDate(new Date(transactionToEdit.date));
-      } else {
-        setTxAmount("");
-        setTxDesc("");
-        setTxDate(new Date());
-        setTxType("EXPENSE");
-        setTxMethod("BANK");
-      }
-      setTimeout(() => {
-        amountInputRef.current?.focus();
-      }, 300);
+    if (!visible) return;
+
+    if (transactionToEdit) {
+      setTxType(transactionToEdit.type);
+      setTxMethod(transactionToEdit.method);
+      setTxAmount(formatNumberInput(transactionToEdit.amount.toString()));
+      setTxDesc(transactionToEdit.description);
+      setTxDate(new Date(transactionToEdit.date));
+    } else {
+      setTxAmount("");
+      setTxDesc("");
+      setTxDate(new Date());
+      // Use the first active type; fall back to the legacy default if the
+      // user archived everything (shouldn't happen, but keeps us safe).
+      setTxType(activeTypes[0]?.id ?? "EXPENSE");
+      setTxMethod("BANK");
     }
+
+    const timeout = setTimeout(() => {
+      amountInputRef.current?.focus();
+    }, 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, transactionToEdit]);
 
   const handleSave = () => {
     const amountNum = parseFormattedNumber(txAmount);
     if (!amountNum || isNaN(amountNum)) return;
 
-    const transactionData = {
+    const transactionData: Transaction = {
       id: transactionToEdit ? transactionToEdit.id : Date.now().toString(),
       projectId,
       type: txType,
@@ -2912,10 +3766,11 @@ export default function AddTransactionBottomSheet({
       addTransaction(transactionData);
     }
 
+    // Reset local state
     setTxAmount("");
     setTxDesc("");
     setTxDate(new Date());
-    setTxType("EXPENSE");
+    setTxType(activeTypes[0]?.id ?? "EXPENSE");
     setTxMethod("CASH");
     setShowDatePicker(false);
     onClose();
@@ -2930,6 +3785,8 @@ export default function AddTransactionBottomSheet({
     }
   };
 
+  const isTransfer = txType === "TRANSFER";
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView
@@ -2941,147 +3798,145 @@ export default function AddTransactionBottomSheet({
             {transactionToEdit ? "تعديل المعاملة" : "إضافة معاملة جديدة"}
           </Text>
 
-          <Text style={styles.modalLabel}>نوع المعاملة</Text>
-          <View style={styles.row}>
-            {[
-              "EXPENSE",
-              "INCOME",
-              "ABDU",
-              "MEDICAL",
-              "PAYROLL",
-              "BILL",
-              "LOAN_GIVEN",
-              "LOAN_RECEIVED",
-              "TRANSPORTATION",
-              "TRANSFER",
-              "BANK_FEE",
-            ].map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[styles.chip, txType === type && styles.chipActive]}
-                onPress={() => setTxType(type as TransactionType)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    txType === type && styles.chipTextActive,
-                  ]}
-                >
-                  {type === "INCOME"
-                    ? "إستلام مبلغ"
-                    : type === "GIVEAWAY"
-                      ? "تسليم مبلغ"
-                      : type === "EXPENSE"
-                        ? "البقالة"
-                        : type === "PAYROLL"
-                          ? "رواتب"
-                          : type === "ABDU"
-                            ? "منصرف خاص"
-                            : type === "MEDICAL"
-                              ? "علاجات وأدوية"
-                              : type === "BANK_FEE"
-                                ? "رسوم تحويل بنكك"
-                                : type === "TRANSPORTATION"
-                                  ? "مواصلات"
-                                  : type === "BILL"
-                                    ? "فاتورة"
-                                    : type === "LOAN_GIVEN"
-                                      ? "قرض مُعطى"
-                                      : type === "LOAN_RECEIVED"
-                                        ? "قرض مأخوذ"
-                                        : "سحب كاش/إبداع بنكي"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.modalLabel}>
-            {txType === "TRANSFER" ? "تحويل إلى" : "طريقة الدفع"}
-          </Text>
-          <View style={styles.row}>
-            {["CASH", "BANK"].map((method) => (
-              <TouchableOpacity
-                key={method}
-                style={[styles.chip, txMethod === method && styles.chipActive]}
-                onPress={() => setTxMethod(method as PaymentMethod)}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    txMethod === method && styles.chipTextActive,
-                  ]}
-                >
-                  {method === "CASH"
-                    ? txType === "TRANSFER"
-                      ? "الصندوق (سحب من البنك)"
-                      : "نقدي"
-                    : txType === "TRANSFER"
-                      ? "البنك (إيداع نقدي)"
-                      : "بنكي"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            ref={amountInputRef}
-            style={styles.input}
-            placeholder="المبلغ"
-            keyboardType="numeric"
-            value={txAmount}
-            onChangeText={(text) => setTxAmount(formatNumberInput(text))}
-            textAlign="right"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="الوصف (مواد، مورد، الخ)"
-            value={txDesc}
-            onChangeText={setTxDesc}
-            textAlign="right"
-          />
-
-          <TouchableOpacity
-            style={styles.dateInput}
-            onPress={() => setShowDatePicker(true)}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.dateText}>
-              {txDate.toISOString().split("T")[0]}
-            </Text>
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <View style={styles.datePickerContainer}>
-              <DateTimePicker
-                value={txDate}
-                mode="date"
-                display="default"
-                onValueChange={handleDateChange}
-              />
-              {Platform.OS === "ios" && (
-                <TouchableOpacity
-                  style={styles.doneButton}
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.doneButtonText}>تم</Text>
-                </TouchableOpacity>
+            {/* ---------- TYPE PICKER (driven by project.transactionTypes) ---------- */}
+            <Text style={styles.modalLabel}>نوع المعاملة</Text>
+            <View style={styles.row}>
+              {visibleTypes.length === 0 && (
+                <Text style={styles.emptyTypesText}>
+                  لا توجد أنواع متاحة لهذا المشروع. أضف نوعاً من إعدادات
+                  المشروع.
+                </Text>
               )}
+              {visibleTypes.map((def) => {
+                const isActive = txType === def.id;
+                return (
+                  <TouchableOpacity
+                    key={def.id}
+                    style={[
+                      styles.chip,
+                      isActive && {
+                        backgroundColor: `${def.color}22`, // ~13% tint
+                        borderColor: def.color,
+                      },
+                      isActive && styles.chipActiveOutline,
+                    ]}
+                    onPress={() => setTxType(def.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isActive && { color: def.color, fontWeight: "bold" },
+                      ]}
+                    >
+                      {def.label}
+                      {def.archived ? "  (مؤرشف)" : ""}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          )}
 
-          <View style={[styles.row, { marginTop: 16 }]}>
+            {/* ---------- METHOD PICKER ---------- */}
+            <Text style={styles.modalLabel}>
+              {isTransfer ? "تحويل إلى" : "طريقة الدفع"}
+            </Text>
+            <View style={styles.row}>
+              {(["CASH", "BANK"] as PaymentMethod[]).map((method) => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.chip,
+                    txMethod === method && styles.chipActive,
+                  ]}
+                  onPress={() => setTxMethod(method)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      txMethod === method && styles.chipTextActive,
+                    ]}
+                  >
+                    {method === "CASH"
+                      ? isTransfer
+                        ? "الصندوق (سحب من البنك)"
+                        : "نقدي"
+                      : isTransfer
+                        ? "البنك (إيداع نقدي)"
+                        : "بنكي"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ---------- AMOUNT ---------- */}
+            <TextInput
+              ref={amountInputRef}
+              style={styles.input}
+              placeholder="المبلغ"
+              keyboardType="numeric"
+              value={txAmount}
+              onChangeText={(text) => setTxAmount(formatNumberInput(text))}
+              textAlign="right"
+            />
+
+            {/* ---------- DESCRIPTION ---------- */}
+            <TextInput
+              style={styles.input}
+              placeholder="الوصف (مواد، مورد، الخ)"
+              value={txDesc}
+              onChangeText={setTxDesc}
+              textAlign="right"
+            />
+
+            {/* ---------- DATE ---------- */}
             <TouchableOpacity
-              style={[styles.modalBtn, styles.saveBtn]}
-              onPress={handleSave}
+              style={styles.dateInput}
+              onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.saveBtnText}>حفظ</Text>
+              <Text style={styles.dateText}>
+                {txDate.toISOString().split("T")[0]}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalBtn, styles.cancelBtn]}
-              onPress={onClose}
-            >
-              <Text style={styles.cancelBtnText}>إلغاء</Text>
-            </TouchableOpacity>
-          </View>
+
+            {showDatePicker && (
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={txDate}
+                  mode="date"
+                  display="default"
+                  onValueChange={handleDateChange}
+                />
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    style={styles.doneButton}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.doneButtonText}>تم</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* ---------- ACTIONS ---------- */}
+            <View style={[styles.row, { marginTop: 16 }]}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.saveBtn]}
+                onPress={handleSave}
+              >
+                <Text style={styles.saveBtnText}>حفظ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={onClose}
+              >
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -3099,6 +3954,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    maxHeight: "90%",
   },
   modalHeader: {
     fontSize: 20,
@@ -3119,6 +3975,12 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  emptyTypesText: {
+    color: "#9CA3AF",
+    fontSize: 13,
+    textAlign: "right",
+    flex: 1,
+  },
   datePickerContainer: {
     alignItems: "center",
     marginBottom: 12,
@@ -3131,7 +3993,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
+  // Kept from the original so the method picker still highlights.
   chipActive: { backgroundColor: "#dbeafe", borderColor: "#3b82f6" },
+  // Additional outline used by the type picker when a colored type is active.
+  chipActiveOutline: { borderWidth: 1.5 },
   chipText: { color: "#4b5563", fontSize: 14 },
   chipTextActive: { color: "#1d4ed8", fontWeight: "bold" },
   input: {
@@ -3157,7 +4022,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontSize: 14,
   },
-
   doneButton: {
     marginTop: 8,
     padding: 8,
@@ -6006,12 +6870,21 @@ export const getEnglishInvoiceHtml = (
             color: #000;
             padding-top: 10px;
           }
+
+          /* =========================================
+             SIGNATURE — line sits just above the text
+          ========================================== */
           .signature-area {
-            padding-top: 15px;
+            width: 80%;
+            padding-top: 115px; /* whitespace for the actual signature */
+          }
+          .signature-line {
             border-top: 1px dashed #ccc;
+          }
+          .signature-text {
+            padding-top: 4px;
             font-size: 10px;
             color: #555;
-            width: 80%;
           }
         </style>
       </head>
@@ -6047,7 +6920,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">Time</div>
-                <div class="meta-value">10:00 AM</div>
+                <div class="meta-value">03:00 PM</div>
 
                <div class="meta-label">Paid Amount</div>
                <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>
@@ -6113,9 +6986,9 @@ export const getEnglishInvoiceHtml = (
           <!-- BOTTOM SECTION -->
           <div class="bottom-container">
             <div class="bottom-left-cell">
-            
               <div class="signature-area">
-                Authorized Signature & Date
+                <div class="signature-line"></div>
+                <div class="signature-text">Authorized Signature &amp; Date</div>
               </div>
             </div>
             
@@ -6167,7 +7040,7 @@ ${
 
 === ./src/services/repoetTemplates/A4.ts ===
 // ------------------------------------------------------------------
-// FINANCIAL REPORT (unchanged)
+// FINANCIAL REPORT
 // ------------------------------------------------------------------
 
 import { Project, Transaction } from "@/types";
@@ -6222,29 +7095,44 @@ export const getArFinancialReportHtml = async (
     .filter((t) => t.projectId === project.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const categoryTotals: Record<string, number> = {
-    INCOME: 0,
-    EXPENSE: 0,
-    BILL: 0,
-    PAYROLL: 0,
-    TRANSFER: 0,
-    BANK_FEE: 0,
-    ABDU: 0,
-    MEDICAL: 0,
-    TRANSPORTATION: 0,
-    LOAN_GIVEN: 0,
-    LOAN_RECEIVED: 0,
-  };
+  // -------- Type definition resolvers (drive everything from `project`) --------
+  const findDef = (typeId: string) =>
+    project.transactionTypes.find((d) => d.id === typeId);
+
+  const getTypeLabel = (typeId: string) => findDef(typeId)?.label ?? typeId;
+
+  const getTypeColor = (typeId: string) => findDef(typeId)?.color ?? "#334155";
+
+  const isInflowType = (typeId: string) =>
+    findDef(typeId)?.direction === "INFLOW";
+
+  // -------- Category totals: seeded from project types, plus legacy ids --------
+  // Seeding from project types first guarantees a stable, ordered table that
+  // reflects the user's catalog (including custom types and archived ones).
+  const categoryTotals: Record<string, number> = {};
+  project.transactionTypes.forEach((t) => {
+    categoryTotals[t.id] = 0;
+  });
+  // Any transaction whose type id isn't in the catalog (e.g. an old id after
+  // a full delete of a custom type) still gets a bucket so the totals aren't
+  // silently dropped.
   projectTransactions.forEach((t) => {
-    if (categoryTotals[t.type] !== undefined) {
-      categoryTotals[t.type] += t.amount;
-    }
+    if (categoryTotals[t.type] === undefined) categoryTotals[t.type] = 0;
+  });
+  projectTransactions.forEach((t) => {
+    categoryTotals[t.type] += t.amount;
   });
 
-  const totalIncome = categoryTotals.INCOME + categoryTotals.LOAN_RECEIVED; // include loans received as income
-  const totalExpenses = projectTransactions
-    .filter((t) => t.type !== "INCOME" && t.type !== "LOAN_RECEIVED")
-    .reduce((sum, t) => sum + t.amount, 0);
+  // -------- Totals: direction-driven, TRANSFER excluded from both --------
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  projectTransactions.forEach((t) => {
+    const def = findDef(t.type);
+    if (!def || !def.affectsBalance) return; // informational-only types
+    if (def.id === "TRANSFER") return; // internal move: neither income nor expense
+    if (def.direction === "INFLOW") totalIncome += t.amount;
+    else if (def.direction === "OUTFLOW") totalExpenses += t.amount;
+  });
 
   const todayDate = new Date().toLocaleDateString("ar-EG", {
     year: "numeric",
@@ -6252,43 +7140,18 @@ export const getArFinancialReportHtml = async (
     day: "numeric",
   });
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "INCOME":
-        return "دخل";
-      case "EXPENSE":
-        return "البقالة";
-      case "TRANSPORTATION":
-        return "مواصلات";
-      case "ABDU":
-        return "منصرف خاص";
-      case "MEDICAL":
-        return "علاجات وأدوية";
-      case "BANK_FEE":
-        return "رسوم تحويل بنكك";
-      case "PAYROLL":
-        return "يوميات ورواتب";
-      case "BILL":
-        return "فواتير";
-      case "TRANSFER":
-        return "سحب كاش/إبداع بنكي";
-      case "LOAN_GIVEN":
-        return "قرض مُعطى";
-      case "LOAN_RECEIVED":
-        return "قرض مأخوذ";
-      default:
-        return type;
-    }
-  };
-
-  // NEW: filter out categories with 0 amount so they don't appear in the report
+  // -------- Category table rows (skip zero-amount rows) --------
   const categoryRows = Object.entries(categoryTotals)
     .filter(([, amount]) => amount !== 0)
     .map(
-      ([type, amount]) => `
+      ([typeId, amount]) => `
       <tr>
-        <td style="padding:8px; border:1px solid #cbd5e1; text-align:right;">${getTypeLabel(type)}</td>
-        <td style="padding:8px; border:1px solid #cbd5e1; text-align:left; ${type === "INCOME" || type === "LOAN_RECEIVED" ? "color:#10b981;" : "color:#ef4444;"}">
+        <td style="padding:8px; border:1px solid #cbd5e1; text-align:right;">
+          ${getTypeLabel(typeId)}
+        </td>
+        <td style="padding:8px; border:1px solid #cbd5e1; text-align:left; color:${getTypeColor(
+          typeId,
+        )};">
           ${formatCurrency(amount)}
         </td>
       </tr>
@@ -6520,8 +7383,8 @@ export const getArFinancialReportHtml = async (
                 <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
                 <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
                 <td>
-                  <span class="${t.type === "INCOME" ? "amount-in" : "amount-out"}">
-                    ${t.type === "INCOME" ? "+" : "-"}${formatCurrency(t.amount)}
+                  <span class="${isInflowType(t.type) ? "amount-in" : "amount-out"}">
+                    ${isInflowType(t.type) ? "+" : "-"}${formatCurrency(t.amount)}
                   </span>
                 </td>
               </tr>
@@ -6542,11 +7405,13 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
   Conversation,
+  DEFAULT_TRANSACTION_TYPES,
   Employee,
   Invoice,
   Message,
   Project,
   Transaction,
+  TransactionTypeDef,
 } from "../types";
 
 interface AppState {
@@ -6554,7 +7419,21 @@ interface AppState {
   transactions: Transaction[];
   employees: Employee[];
   invoices: Invoice[];
-  addProject: (project: Omit<Project, "currentCash" | "currentBank">) => void;
+
+  // ---- Per-project transaction type CRUD ----
+  addTransactionType: (projectId: string, def: TransactionTypeDef) => void;
+  updateTransactionType: (
+    projectId: string,
+    typeId: string,
+    updates: Partial<Omit<TransactionTypeDef, "id" | "isSystem">>,
+  ) => void;
+  removeTransactionType: (projectId: string, typeId: string) => void;
+  reorderTransactionTypes: (projectId: string, orderedIds: string[]) => void;
+
+  // ---- Projects ----
+  addProject: (
+    project: Omit<Project, "currentCash" | "currentBank" | "transactionTypes">,
+  ) => void;
   addTransaction: (transaction: Transaction) => void;
   updateProject: (
     id: string,
@@ -6568,6 +7447,7 @@ interface AppState {
   updateInvoice: (id: string, updates: Partial<Omit<Invoice, "id">>) => void;
   deleteInvoice: (id: string) => void;
 
+  // ---- Messaging ----
   conversations: Conversation[];
   messages: Record<string, Message[]>;
   setConversations: (convs: Conversation[]) => void;
@@ -6612,17 +7492,40 @@ const defaultMessages: Record<string, Message[]> = {
   ],
 };
 
-// ----- HELPER: determines if a transaction is an inflow (increases balance) -----
-const isInflow = (type: string): boolean => {
-  return type === "INCOME" || type === "LOAN_RECEIVED";
-};
+// ---------------------------------------------------------------------------
+// Helpers: resolve a transaction type definition from a project's catalog.
+// These replace the old hardcoded `type === "INCOME"` checks. That means any
+// custom type a user creates automatically gets the right balance math.
+// ---------------------------------------------------------------------------
 
-// ----- HELPER: applies a transaction effect to a project's balances -----
-const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
-  const multiplier = sign; // +1 for add, -1 for remove/reverse
-  const amount = tx.amount * multiplier;
+export const resolveType = (
+  project: Project | undefined,
+  typeId: string,
+): TransactionTypeDef | undefined =>
+  project?.transactionTypes?.find((t) => t.id === typeId);
 
-  if (tx.type === "TRANSFER") {
+const isInflowByDef = (def: TransactionTypeDef | undefined): boolean =>
+  def?.direction === "INFLOW";
+
+/**
+ * Applies a transaction to a project's cash/bank balances.
+ * sign = +1 to add, -1 to reverse (used on update/remove).
+ *
+ * - Unknown types and NEUTRAL / affectsBalance=false types leave balances alone.
+ * - TRANSFER flips cash <-> bank depending on `method`.
+ * - Everything else moves by direction.
+ */
+const applyTransaction = (
+  project: Project,
+  tx: Transaction,
+  sign: 1 | -1,
+): Project => {
+  const def = resolveType(project, tx.type);
+  if (!def || !def.affectsBalance) return project;
+
+  const amount = tx.amount * sign;
+
+  if (def.id === "TRANSFER") {
     const isToBank = tx.method === "BANK";
     return {
       ...project,
@@ -6631,8 +7534,7 @@ const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
     };
   }
 
-  const inflow = isInflow(tx.type);
-  const delta = inflow ? amount : -amount;
+  const delta = isInflowByDef(def) ? amount : -amount;
 
   return {
     ...project,
@@ -6643,6 +7545,10 @@ const applyTransaction = (project: Project, tx: Transaction, sign: 1 | -1) => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
+
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
@@ -6651,21 +7557,89 @@ export const useStore = create<AppState>()(
       employees: [],
       invoices: [],
 
-      addInvoice: (invoice) =>
+      // ---------- Per-project transaction type CRUD ----------
+      addTransactionType: (projectId, def) =>
         set((state) => ({
-          invoices: [...state.invoices, invoice],
-        })),
-      updateInvoice: (id, updates) =>
-        set((state) => ({
-          invoices: state.invoices.map((inv) =>
-            inv.id === id ? { ...inv, ...updates } : inv,
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? { ...p, transactionTypes: [...p.transactionTypes, def] }
+              : p,
           ),
         })),
-      deleteInvoice: (id) =>
+
+      updateTransactionType: (projectId, typeId, updates) =>
         set((state) => ({
-          invoices: state.invoices.filter((inv) => inv.id !== id),
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  transactionTypes: p.transactionTypes.map((t) =>
+                    t.id === typeId ? { ...t, ...updates } : t,
+                  ),
+                }
+              : p,
+          ),
         })),
 
+      removeTransactionType: (projectId, typeId) =>
+        set((state) => {
+          const project = state.projects.find((p) => p.id === projectId);
+          const def = project?.transactionTypes.find((t) => t.id === typeId);
+          if (!def) return state;
+
+          const inUse = state.transactions.some(
+            (t) => t.projectId === projectId && t.type === typeId,
+          );
+
+          // System types and types still in use are archived, never removed.
+          // This keeps old transactions' labels resolvable and preserves the
+          // LOAN_RECEIVED / LOAN_GIVEN semantics used by dashboards/reports.
+          if (def.isSystem || inUse) {
+            return {
+              projects: state.projects.map((p) =>
+                p.id === projectId
+                  ? {
+                      ...p,
+                      transactionTypes: p.transactionTypes.map((t) =>
+                        t.id === typeId ? { ...t, archived: true } : t,
+                      ),
+                    }
+                  : p,
+              ),
+            };
+          }
+
+          return {
+            projects: state.projects.map((p) =>
+              p.id === projectId
+                ? {
+                    ...p,
+                    transactionTypes: p.transactionTypes.filter(
+                      (t) => t.id !== typeId,
+                    ),
+                  }
+                : p,
+            ),
+          };
+        }),
+
+      reorderTransactionTypes: (projectId, orderedIds) =>
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id !== projectId) return p;
+            const byId = new Map(p.transactionTypes.map((t) => [t.id, t]));
+            const ordered = orderedIds
+              .map((id) => byId.get(id))
+              .filter(Boolean) as TransactionTypeDef[];
+            // Preserve any types not in the provided ordering at the end.
+            const remaining = p.transactionTypes.filter(
+              (t) => !orderedIds.includes(t.id),
+            );
+            return { ...p, transactionTypes: [...ordered, ...remaining] };
+          }),
+        })),
+
+      // ---------- Projects ----------
       addProject: (projectData) =>
         set((state) => ({
           projects: [
@@ -6674,13 +7648,12 @@ export const useStore = create<AppState>()(
               ...projectData,
               currentCash: projectData.initialCash,
               currentBank: projectData.initialBank,
+              // Seed the defaults (shallow-copied so each project is isolated).
+              transactionTypes: DEFAULT_TRANSACTION_TYPES.map((t) => ({
+                ...t,
+              })),
             },
           ],
-        })),
-
-      addEmployee: (employee) =>
-        set((state) => ({
-          employees: [...state.employees, employee],
         })),
 
       updateProject: (id, updates) =>
@@ -6689,6 +7662,7 @@ export const useStore = create<AppState>()(
             p.id === id ? { ...p, ...updates } : p,
           ),
         })),
+
       removeProject: (projectId) =>
         set((state) => ({
           projects: state.projects.filter((p) => p.id !== projectId),
@@ -6696,6 +7670,7 @@ export const useStore = create<AppState>()(
             (t) => t.projectId !== projectId,
           ),
         })),
+
       addTransaction: (transaction) =>
         set((state) => {
           const updatedProjects = state.projects.map((proj) =>
@@ -6716,14 +7691,14 @@ export const useStore = create<AppState>()(
           );
           if (!oldTransaction) return state;
 
-          // Reverse old transaction
+          // 1) Reverse old effect
           const afterReverse = state.projects.map((proj) =>
             proj.id === oldTransaction.projectId
               ? applyTransaction(proj, oldTransaction, -1)
               : proj,
           );
 
-          // Apply new transaction
+          // 2) Apply new effect
           const finalProjects = afterReverse.map((proj) =>
             proj.id === updatedTransaction.projectId
               ? applyTransaction(proj, updatedTransaction, 1)
@@ -6759,7 +7734,30 @@ export const useStore = create<AppState>()(
           };
         }),
 
-      // ----- Messaging -----
+      // ---------- Employees / Invoices ----------
+      addEmployee: (employee) =>
+        set((state) => ({
+          employees: [...state.employees, employee],
+        })),
+
+      addInvoice: (invoice) =>
+        set((state) => ({
+          invoices: [...state.invoices, invoice],
+        })),
+
+      updateInvoice: (id, updates) =>
+        set((state) => ({
+          invoices: state.invoices.map((inv) =>
+            inv.id === id ? { ...inv, ...updates } : inv,
+          ),
+        })),
+
+      deleteInvoice: (id) =>
+        set((state) => ({
+          invoices: state.invoices.filter((inv) => inv.id !== id),
+        })),
+
+      // ---------- Messaging ----------
       conversations: defaultConversations,
       messages: defaultMessages,
 
@@ -6803,6 +7801,24 @@ export const useStore = create<AppState>()(
     {
       name: "finance-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // Bumped to 2 because the Project schema now carries `transactionTypes`.
+      version: 2,
+      // Backfill defaults for projects persisted before this change.
+      migrate: (persistedState: any, _version) => {
+        const state = persistedState as Partial<AppState>;
+        const projects = (state.projects ?? []).map((p: any) => {
+          if (Array.isArray(p.transactionTypes) && p.transactionTypes.length) {
+            return p as Project;
+          }
+          return {
+            ...p,
+            transactionTypes: DEFAULT_TRANSACTION_TYPES.map((t) => ({
+              ...t,
+            })),
+          } as Project;
+        });
+        return { ...state, projects };
+      },
     },
   ),
 );
@@ -6811,18 +7827,166 @@ export const useStore = create<AppState>()(
 // src/types/index.ts
 
 export type PaymentMethod = "CASH" | "BANK";
-export type TransactionType =
-  | "INCOME"
-  | "EXPENSE"
-  | "BILL"
-  | "TRANSPORTATION"
-  | "ABDU"
-  | "MEDICAL"
-  | "PAYROLL"
-  | "BANK_FEE"
-  | "TRANSFER"
-  | "LOAN_GIVEN"
-  | "LOAN_RECEIVED";
+
+/**
+ * A transaction type is now DATA, not a hardcoded union.
+ * Each project owns its own list of these.
+ *
+ * direction:
+ *   "INFLOW"  -> increases cash/bank (e.g. INCOME, LOAN_RECEIVED)
+ *   "OUTFLOW" -> decreases cash/bank (e.g. EXPENSE, BILL, PAYROLL)
+ *   "NEUTRAL" -> does NOT affect cash/bank balances (e.g. a pure
+ *                note/annotation type). Useful for future custom types.
+ *
+ * affectsBalance: false lets you add informational-only types.
+ * color: used by list rows, chips, and the PDF report.
+ * isSystem: true for the seeded defaults; system types can be hidden
+ *           but not deleted (keeps LOAN_RECEIVED/INCOME semantics safe
+ *           for the net-loan calculation in the dashboard/report).
+ */
+export type TransactionDirection = "INFLOW" | "OUTFLOW" | "NEUTRAL";
+
+export interface TransactionTypeDef {
+  id: string; // stable key, e.g. "INCOME", "MY_CUSTOM_TYPE"
+  label: string; // Arabic display label
+  labelEn?: string; // optional English label for the EN invoice PDF
+  direction: TransactionDirection;
+  affectsBalance: boolean;
+  color: string; // hex, used for the type badge + report
+  isSystem?: boolean; // true for seeded defaults
+  archived?: boolean; // hidden from pickers but kept on old transactions
+  // Optional overrides for loan math (defaults derived from id):
+  countsAsLoanGiven?: boolean;
+  countsAsLoanReceived?: boolean;
+}
+
+/** The seed list a new project starts with. Mirrors today's union. */
+export const DEFAULT_TRANSACTION_TYPES: TransactionTypeDef[] = [
+  {
+    id: "INCOME",
+    label: "إستلام مبلغ",
+    direction: "INFLOW",
+    affectsBalance: true,
+    color: "#10b981",
+    isSystem: true,
+  },
+  {
+    id: "LOAN_RECEIVED",
+    label: "قرض مأخوذ",
+    direction: "INFLOW",
+    affectsBalance: true,
+    color: "#8B5CF6",
+    isSystem: true,
+    countsAsLoanReceived: true,
+  },
+  {
+    id: "LOAN_GIVEN",
+    label: "قرض مُعطى",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#EF4444",
+    isSystem: true,
+    countsAsLoanGiven: true,
+  },
+  {
+    id: "EXPENSE",
+    label: "البقالة",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "BILL",
+    label: "فاتورة",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "PAYROLL",
+    label: "رواتب",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "ABDU",
+    label: "منصرف خاص",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "MEDICAL",
+    label: "علاجات وأدوية",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "TRANSPORTATION",
+    label: "مواصلات",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "BANK_FEE",
+    label: "رسوم تحويل بنكي",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+  {
+    id: "TRANSFER",
+    label: "تحويل داخلي",
+    direction: "NEUTRAL",
+    affectsBalance: true,
+    color: "#2563eb",
+    isSystem: true,
+  },
+  {
+    id: "GIVEAWAY",
+    label: "تسليم مبلغ",
+    direction: "OUTFLOW",
+    affectsBalance: true,
+    color: "#ef4444",
+    isSystem: true,
+  },
+];
+
+export interface Project {
+  id: string;
+  name: string;
+  initialCash: number;
+  initialBank: number;
+  currentCash: number;
+  currentBank: number;
+  createdAt: string;
+  /** NEW: per-project transaction type catalog. */
+  transactionTypes: TransactionTypeDef[];
+}
+
+// Transaction now stores a string id (one of the project's type ids).
+export interface Transaction {
+  id: string;
+  projectId: string;
+  type: string; // CHANGED: was TransactionType union
+  method: PaymentMethod;
+  amount: number;
+  description: string;
+  date: string;
+  employeeId?: string;
+  vendorId?: string;
+}
+
 // NEW: invoice type
 export type InvoiceType = "ARABIC_INV" | "ENGLISH_INV";
 
@@ -6836,18 +8000,6 @@ export interface Vendor {
   id: string;
   name: string;
   balance: number;
-}
-
-export interface Transaction {
-  id: string;
-  projectId: string;
-  type: TransactionType;
-  method: PaymentMethod;
-  amount: number;
-  description: string;
-  date: string;
-  employeeId?: string;
-  vendorId?: string;
 }
 
 export interface Project {
@@ -7171,6 +8323,29 @@ export const formatCurrencyPdfWithCents = (amount: number): string => {
 /// <reference types="expo/types" />
 
 // NOTE: This file should not be edited and should be in your git ignore
+=== ./onHold/profile.tsx ===
+// src/app/profile.tsx
+import { StyleSheet, Text, View } from "react-native";
+
+export default function ProfileScreen() {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.title}>الملف الشخصي</Text>
+      {/* Add avatar, name, settings rows, etc. */}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+  },
+  title: { fontSize: 22, fontWeight: "700", color: "#111827" },
+});
+
 === ./onHold/messages/[id].tsx ===
 // src/app/messages/[id].tsx
 import { useStore } from "@/store/useStore";
@@ -7442,21 +8617,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   pdfBtnText: { color: "white", fontWeight: "500" },
-});
-
-=== ./onHold/profile.tsx ===
-import { StyleSheet, Text, View } from "react-native";
-
-export default function ProfileScreen() {
-  return (
-    <View style={styles.center}>
-      <Text>Profile Settings & Employees</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
 === ./eas.json ===
