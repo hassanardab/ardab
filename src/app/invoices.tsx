@@ -8,15 +8,25 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import InvoiceBottomSheet from "../components/InvoiceBottomSheet";
 import { useStore } from "../store/useStore";
 import { Invoice } from "../types";
 
 export default function InvoicesScreen() {
-  const router = useRouter(); // ✅ added
+  const router = useRouter();
   const { invoices } = useStore();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Reserve space for the absolutely-positioned tab bar so the FAB and the
+  // last invoice card aren't hidden behind it.
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
 
   const openNewInvoice = () => {
     setSelectedInvoice(null);
@@ -43,50 +53,62 @@ export default function InvoicesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={invoices}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push(`/invoice/${item.id}`)}
-            onLongPress={() => openEditInvoice(item)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.customerName}>{item.customerName}</Text>
-            <Text style={styles.companyName}>{item.companyName}</Text>
-            <View style={styles.row}>
-              <Text style={styles.typeBadge}>
-                {item.type === "ARABIC_INV"
-                  ? "بالعربيه (Arabic)"
-                  : "بالإنجليزية (English)"}
-              </Text>
-              <Text style={styles.date}>{formatDate(item.date)}</Text>
-              <Text style={styles.total}>
-                الإجمالي: {computeTotal(item).toFixed(2)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>لا توجد فواتير بعد</Text>
-        }
-      />
-      <TouchableOpacity style={styles.fab} onPress={openNewInvoice}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-      <InvoiceBottomSheet
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        invoiceToEdit={selectedInvoice}
-      />
-    </View>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <View style={styles.container}>
+        <FlatList
+          data={invoices}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: 32 + BOTTOM_RESERVED },
+          ]}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/invoice/${item.id}`)}
+              onLongPress={() => openEditInvoice(item)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.customerName}>{item.customerName}</Text>
+              <Text style={styles.companyName}>{item.companyName}</Text>
+              <View style={styles.row}>
+                <Text style={styles.typeBadge}>
+                  {item.type === "ARABIC_INV"
+                    ? "بالعربية (Arabic)"
+                    : "بالإنجليزية (English)"}
+                </Text>
+                <Text style={styles.date}>{formatDate(item.date)}</Text>
+                <Text style={styles.total}>
+                  الإجمالي: {computeTotal(item).toFixed(2)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.empty}>لا توجد فواتير بعد</Text>
+          }
+        />
+
+        {/* FAB lifted above the tab bar */}
+        <TouchableOpacity
+          style={[styles.fab, { bottom: 30 + BOTTOM_RESERVED }]}
+          onPress={openNewInvoice}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+
+        <InvoiceBottomSheet
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          invoiceToEdit={selectedInvoice}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#f3f4f6" },
   container: { flex: 1, backgroundColor: "#f3f4f6" },
   listContent: { padding: 16 },
   card: {
@@ -130,7 +152,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 30,
     right: 20,
     width: 56,
     height: 56,

@@ -302,7 +302,7 @@ adb reverse tcp:8081 tcp:8081
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "2.10",
+    "version": "2.11",
     "orientation": "portrait",
     "icon": "./assets/images/icon_white_background.png",
     "scheme": "ardab",
@@ -635,75 +635,96 @@ rl.question(
 );
 
 === ./src/app/_layout.tsx ===
+// src/app/_layout.tsx
 import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "react-native";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-const AVATAR_URI = require("@/assets/images/icon.png");
-
+// NOTE: SafeAreaProvider MUST be above the Tabs so that
+// useSafeAreaInsets() works inside every screen.
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  return (
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      <TabsShell />
+    </SafeAreaProvider>
+  );
+}
+
+function TabsShell() {
+  const insets = useSafeAreaInsets();
+
+  // Base height the tab bar needs for its icons + labels.
+  // (React Navigation's default is ~49 on iOS, ~56 on Android.)
+  // We ADD the bottom safe-area inset so the bar's background
+  // extends behind the home indicator on modern phones, and add
+  // matching bottom padding so the icons stay above it.
+  const BASE_TAB_BAR_HEIGHT = 56;
+  const TAB_BAR_HEIGHT = BASE_TAB_BAR_HEIGHT + insets.bottom;
 
   return (
-    <>
-      {/* Makes the phone's top bar (battery / signal / time) visible with
-          dark icons so they are readable on the white header. */}
-      <StatusBar style="dark" />
-
-      <Tabs
-        screenOptions={{
-          headerStyle: { backgroundColor: "#ffffff" },
-          headerTintColor: "#000000",
-          tabBarActiveTintColor: "#000000",
-          tabBarInactiveTintColor: "#a7a9ac",
-          // Hides the tab bar while the keyboard is open so inputs aren't
-          // covered by the tab bar + keyboard stack.
-          tabBarHideOnKeyboard: true,
-          tabBarStyle: {
-            backgroundColor: "#ffffff",
-            borderTopColor: "#a7a9ac",
-            borderTopWidth: 0.5,
-          },
+    <Tabs
+      screenOptions={{
+        headerStyle: { backgroundColor: "#ffffff" },
+        headerTintColor: "#000000",
+        tabBarActiveTintColor: "#000000",
+        tabBarInactiveTintColor: "#a7a9ac",
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          backgroundColor: "#ffffff",
+          borderTopColor: "#a7a9ac",
+          borderTopWidth: 0.5,
+          // This is what removes the gray strip:
+          height: TAB_BAR_HEIGHT,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 6,
+          paddingTop: 4,
+          // Make sure the background paints even in the inset zone:
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "الرئيسية",
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="dashboard" size={24} color={color} />
+          ),
         }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: "الرئيسية",
-            headerTitleAlign: "center",
-            tabBarIcon: ({ color }) => (
-              <MaterialIcons name="dashboard" size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="invoices"
-          options={{
-            title: "الفواتير",
-            headerTitleAlign: "center",
-            tabBarIcon: ({ color }) => (
-              <MaterialIcons name="receipt" size={24} color={color} />
-            ),
-          }}
-        />{" "}
-        <Tabs.Screen
-          name="messages"
-          options={{
-            title: "الأسماء",
-            headerTitleAlign: "center",
-            tabBarIcon: ({ color }) => (
-              <MaterialIcons name="people" size={24} color={color} />
-            ),
-          }}
-        />
-        {/* Hide nested routes */}
-        <Tabs.Screen name="project/[id]" options={{ href: null }} />
-        <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
-        <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
-        <Tabs.Screen name="project/[id]/settings" options={{ href: null }} />
-      </Tabs>
-    </>
+      />
+      <Tabs.Screen
+        name="invoices"
+        options={{
+          title: "الفواتير",
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="receipt" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "الأسماء",
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="people" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen name="project/[id]" options={{ href: null }} />
+      <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
+      <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
+      <Tabs.Screen name="project/[id]/settings" options={{ href: null }} />
+    </Tabs>
   );
 }
 
@@ -724,6 +745,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import AddTransactionBottomSheet from "../components/AddTransactionBottomSheet";
 import { resolveType, useStore } from "../store/useStore";
 import { Project } from "../types";
@@ -747,6 +772,11 @@ export default function DashboardScreen() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
+
+  // ---- Safe area: reserve top for status bar, bottom for tab bar ----
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
 
   // ---------- Date range filter state ----------
   const [dateFilter, setDateFilter] = useState<DateFilterType>("ALL");
@@ -952,288 +982,297 @@ export default function DashboardScreen() {
   }).format(new Date());
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardContainer}
-      behavior={Platform.OS === "ios" ? "padding" : "padding"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
-    >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-        automaticallyAdjustKeyboardInsets
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
-        {/* Top Header Bar with Date */}
-        <View style={styles.headerContainer}>
-          <View style={styles.headerTextGroup}>
-            <Text style={styles.dateText}>{formattedDate}</Text>
-            <Text style={styles.header}>المشاريع النشطة</Text>
-          </View>
-          <Image
-            source={require("@/assets/images/icon.png")}
-            style={styles.logo}
-          />
-        </View>
-
-        {/* ====== DATE RANGE FILTER ====== */}
-        <View style={styles.filterCard}>
-          <View style={styles.filterHeaderRow}>
-            <Text style={styles.filterPeriodLabel}>{periodLabel}</Text>
-            <Text style={styles.filterTitle}>الفترة الزمنية</Text>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterChipsScroll}
-          >
-            {(
-              [
-                { id: "ALL", label: "الكل" },
-                { id: "THIS_MONTH", label: "هذا الشهر" },
-                { id: "LAST_MONTH", label: "الشهر الماضي" },
-                { id: "THIS_YEAR", label: "هذا العام" },
-                { id: "CUSTOM", label: "مخصص" },
-              ] as { id: DateFilterType; label: string }[]
-            ).map((f) => (
-              <TouchableOpacity
-                key={f.id}
-                style={[
-                  styles.filterChip,
-                  dateFilter === f.id && styles.filterChipActive,
-                ]}
-                onPress={() => setDateFilter(f.id)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    dateFilter === f.id && styles.filterChipTextActive,
-                  ]}
-                >
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {dateFilter === "CUSTOM" && (
-            <View style={styles.customRangeRow}>
-              <TouchableOpacity
-                style={styles.dateBtn}
-                onPress={() => setShowStartPicker(true)}
-              >
-                <Text style={styles.dateBtnLabel}>من</Text>
-                <Text style={styles.dateBtnValue}>
-                  {customStart
-                    ? customStart.toISOString().split("T")[0]
-                    : "اختر"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateBtn}
-                onPress={() => setShowEndPicker(true)}
-              >
-                <Text style={styles.dateBtnLabel}>إلى</Text>
-                <Text style={styles.dateBtnValue}>
-                  {customEnd ? customEnd.toISOString().split("T")[0] : "اختر"}
-                </Text>
-              </TouchableOpacity>
-
-              {(customStart || customEnd) && (
-                <TouchableOpacity
-                  style={styles.clearRangeBtn}
-                  onPress={() => {
-                    setCustomStart(null);
-                    setCustomEnd(null);
-                  }}
-                >
-                  <Text style={styles.clearRangeBtnText}>مسح</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {showStartPicker && (
-            <DateTimePicker
-              value={customStart || new Date()}
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={onStartChange}
-            />
-          )}
-          {showEndPicker && (
-            <DateTimePicker
-              value={customEnd || new Date()}
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={onEndChange}
-            />
-          )}
-
-          {Platform.OS === "ios" && showStartPicker && (
-            <TouchableOpacity
-              style={styles.iosDoneBtn}
-              onPress={() => setShowStartPicker(false)}
-            >
-              <Text style={styles.iosDoneBtnText}>تم</Text>
-            </TouchableOpacity>
-          )}
-          {Platform.OS === "ios" && showEndPicker && (
-            <TouchableOpacity
-              style={styles.iosDoneBtn}
-              onPress={() => setShowEndPicker(false)}
-            >
-              <Text style={styles.iosDoneBtnText}>تم</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ====== PROJECTS ====== */}
-        {projects.map((project) => {
-          const b = projectBalances[project.id] ?? {
-            cash: project.currentCash,
-            bank: project.currentBank,
-            loanBalance: 0,
-          };
-          return (
-            <TouchableOpacity
-              key={project.id}
-              style={styles.card}
-              onPress={() => router.push(`/project/${project.id}`)}
-              onLongPress={() => handleEditProject(project)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.cardTitle}>{project.name}</Text>
-              <View style={styles.balanceRow}>
-                <View style={styles.balanceBlock}>
-                  <Text style={styles.label}>الرصيد النقدي</Text>
-                  <Text style={styles.cashAmount}>
-                    {formatCurrency(b.cash)}
-                  </Text>
-                </View>
-                <View style={styles.balanceBlock}>
-                  <Text style={styles.label}>الرصيد البنكي</Text>
-                  <Text style={styles.bankAmount}>
-                    {formatCurrency(b.bank)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Loan Balance Row */}
-              <View style={styles.loanRow}>
-                <Text style={styles.label}>صافي القروض</Text>
-                <Text
-                  style={[
-                    styles.loanAmount,
-                    b.loanBalance >= 0
-                      ? styles.positiveLoan
-                      : styles.negativeLoan,
-                  ]}
-                >
-                  {formatCurrency(b.loanBalance)}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  openTransactionModal(project.id);
-                }}
-              >
-                <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        })}
-
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="اسم المشروع الجديد"
-            value={newProjectName}
-            onChangeText={setNewProjectName}
-            textAlign="right"
-          />
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={handleCreateProject}
-          >
-            <Text style={styles.primaryBtnText}>إنشاء مشروع</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Transaction Modal */}
-        {selectedProjectId && (
-          <AddTransactionBottomSheet
-            projectId={selectedProjectId}
-            visible={isModalVisible}
-            onClose={() => setIsModalVisible(false)}
-          />
-        )}
-
-        {/* Edit Project Modal */}
-        <Modal
-          visible={!!editingProject}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setEditingProject(null)}
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: 24 + BOTTOM_RESERVED },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          automaticallyAdjustKeyboardInsets
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.editModalContent}>
-              <Text style={styles.modalHeader}>التعديل على المشروع</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="اسم المشروع"
-                value={editName}
-                onChangeText={setEditName}
-                textAlign="right"
-                autoFocus
-              />
+          {/* Top Header Bar with Date */}
+          <View style={styles.headerContainer}>
+            <View style={styles.headerTextGroup}>
+              <Text style={styles.dateText}>{formattedDate}</Text>
+              <Text style={styles.header}>المشاريع النشطة</Text>
+            </View>
+            <Image
+              source={require("@/assets/images/icon.png")}
+              style={styles.logo}
+            />
+          </View>
 
-              {/* Save / Cancel */}
-              <View style={styles.editModalButtons}>
+          {/* ====== DATE RANGE FILTER ====== */}
+          <View style={styles.filterCard}>
+            <View style={styles.filterHeaderRow}>
+              <Text style={styles.filterPeriodLabel}>{periodLabel}</Text>
+              <Text style={styles.filterTitle}>الفترة الزمنية</Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterChipsScroll}
+            >
+              {(
+                [
+                  { id: "ALL", label: "الكل" },
+                  { id: "THIS_MONTH", label: "هذا الشهر" },
+                  { id: "LAST_MONTH", label: "الشهر الماضي" },
+                  { id: "THIS_YEAR", label: "هذا العام" },
+                  { id: "CUSTOM", label: "مخصص" },
+                ] as { id: DateFilterType; label: string }[]
+              ).map((f) => (
                 <TouchableOpacity
-                  style={[styles.modalBtn, styles.saveBtn]}
-                  onPress={saveEdit}
+                  key={f.id}
+                  style={[
+                    styles.filterChip,
+                    dateFilter === f.id && styles.filterChipActive,
+                  ]}
+                  onPress={() => setDateFilter(f.id)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.saveBtnText}>حفظ</Text>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      dateFilter === f.id && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
                 </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {dateFilter === "CUSTOM" && (
+              <View style={styles.customRangeRow}>
                 <TouchableOpacity
-                  style={[styles.modalBtn, styles.cancelBtn]}
-                  onPress={() => {
-                    setEditingProject(null);
-                    setEditName("");
+                  style={styles.dateBtn}
+                  onPress={() => setShowStartPicker(true)}
+                >
+                  <Text style={styles.dateBtnLabel}>من</Text>
+                  <Text style={styles.dateBtnValue}>
+                    {customStart
+                      ? customStart.toISOString().split("T")[0]
+                      : "اختر"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.dateBtn}
+                  onPress={() => setShowEndPicker(true)}
+                >
+                  <Text style={styles.dateBtnLabel}>إلى</Text>
+                  <Text style={styles.dateBtnValue}>
+                    {customEnd ? customEnd.toISOString().split("T")[0] : "اختر"}
+                  </Text>
+                </TouchableOpacity>
+
+                {(customStart || customEnd) && (
+                  <TouchableOpacity
+                    style={styles.clearRangeBtn}
+                    onPress={() => {
+                      setCustomStart(null);
+                      setCustomEnd(null);
+                    }}
+                  >
+                    <Text style={styles.clearRangeBtnText}>مسح</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {showStartPicker && (
+              <DateTimePicker
+                value={customStart || new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onStartChange}
+              />
+            )}
+            {showEndPicker && (
+              <DateTimePicker
+                value={customEnd || new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onEndChange}
+              />
+            )}
+
+            {Platform.OS === "ios" && showStartPicker && (
+              <TouchableOpacity
+                style={styles.iosDoneBtn}
+                onPress={() => setShowStartPicker(false)}
+              >
+                <Text style={styles.iosDoneBtnText}>تم</Text>
+              </TouchableOpacity>
+            )}
+            {Platform.OS === "ios" && showEndPicker && (
+              <TouchableOpacity
+                style={styles.iosDoneBtn}
+                onPress={() => setShowEndPicker(false)}
+              >
+                <Text style={styles.iosDoneBtnText}>تم</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* ====== PROJECTS ====== */}
+          {projects.map((project) => {
+            const b = projectBalances[project.id] ?? {
+              cash: project.currentCash,
+              bank: project.currentBank,
+              loanBalance: 0,
+            };
+            return (
+              <TouchableOpacity
+                key={project.id}
+                style={styles.card}
+                onPress={() => router.push(`/project/${project.id}`)}
+                onLongPress={() => handleEditProject(project)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cardTitle}>{project.name}</Text>
+                <View style={styles.balanceRow}>
+                  <View style={styles.balanceBlock}>
+                    <Text style={styles.label}>الرصيد النقدي</Text>
+                    <Text style={styles.cashAmount}>
+                      {formatCurrency(b.cash)}
+                    </Text>
+                  </View>
+                  <View style={styles.balanceBlock}>
+                    <Text style={styles.label}>الرصيد البنكي</Text>
+                    <Text style={styles.bankAmount}>
+                      {formatCurrency(b.bank)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Loan Balance Row */}
+                <View style={styles.loanRow}>
+                  <Text style={styles.label}>صافي القروض</Text>
+                  <Text
+                    style={[
+                      styles.loanAmount,
+                      b.loanBalance >= 0
+                        ? styles.positiveLoan
+                        : styles.negativeLoan,
+                    ]}
+                  >
+                    {formatCurrency(b.loanBalance)}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    openTransactionModal(project.id);
                   }}
                 >
-                  <Text style={styles.cancelBtnText}>إلغاء</Text>
+                  <Text style={styles.actionBtnText}>+ إضافة معاملة</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          })}
+
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="اسم المشروع الجديد"
+              value={newProjectName}
+              onChangeText={setNewProjectName}
+              textAlign="right"
+            />
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleCreateProject}
+            >
+              <Text style={styles.primaryBtnText}>إنشاء مشروع</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Transaction Modal */}
+          {selectedProjectId && (
+            <AddTransactionBottomSheet
+              projectId={selectedProjectId}
+              visible={isModalVisible}
+              onClose={() => setIsModalVisible(false)}
+            />
+          )}
+
+          {/* Edit Project Modal */}
+          <Modal
+            visible={!!editingProject}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setEditingProject(null)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.editModalContent}>
+                <Text style={styles.modalHeader}>التعديل على المشروع</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="اسم المشروع"
+                  value={editName}
+                  onChangeText={setEditName}
+                  textAlign="right"
+                  autoFocus
+                />
+
+                {/* Save / Cancel */}
+                <View style={styles.editModalButtons}>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.saveBtn]}
+                    onPress={saveEdit}
+                  >
+                    <Text style={styles.saveBtnText}>حفظ</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.cancelBtn]}
+                    onPress={() => {
+                      setEditingProject(null);
+                      setEditName("");
+                    }}
+                  >
+                    <Text style={styles.cancelBtnText}>إلغاء</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Delete project (full-width, destructive) */}
+                <TouchableOpacity
+                  style={styles.deleteProjectBtn}
+                  onPress={handleDeleteProject}
+                >
+                  <Text style={styles.deleteProjectBtnText}>حذف المشروع</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Delete project (full-width, destructive) */}
-              <TouchableOpacity
-                style={styles.deleteProjectBtn}
-                onPress={handleDeleteProject}
-              >
-                <Text style={styles.deleteProjectBtnText}>حذف المشروع</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </Modal>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // NEW: outer KeyboardAvoidingView wrapper
+  // NEW: outer SafeAreaView — paints the notch area with the app background
+  safeArea: { flex: 1, backgroundColor: "#f3f4f6" },
+
   keyboardContainer: { flex: 1, backgroundColor: "#f3f4f6" },
   container: { flex: 1, backgroundColor: "#f3f4f6", padding: 16 },
-  // NEW: ensures content still fills the viewport on short lists
+  // Base padding; the runtime BOTTOM_RESERVED is merged on top.
   contentContainer: { flexGrow: 1, paddingBottom: 24 },
 
   headerContainer: {
@@ -1499,15 +1538,25 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import InvoiceBottomSheet from "../components/InvoiceBottomSheet";
 import { useStore } from "../store/useStore";
 import { Invoice } from "../types";
 
 export default function InvoicesScreen() {
-  const router = useRouter(); // ✅ added
+  const router = useRouter();
   const { invoices } = useStore();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Reserve space for the absolutely-positioned tab bar so the FAB and the
+  // last invoice card aren't hidden behind it.
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
 
   const openNewInvoice = () => {
     setSelectedInvoice(null);
@@ -1534,50 +1583,62 @@ export default function InvoicesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={invoices}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push(`/invoice/${item.id}`)}
-            onLongPress={() => openEditInvoice(item)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.customerName}>{item.customerName}</Text>
-            <Text style={styles.companyName}>{item.companyName}</Text>
-            <View style={styles.row}>
-              <Text style={styles.typeBadge}>
-                {item.type === "ARABIC_INV"
-                  ? "بالعربيه (Arabic)"
-                  : "بالإنجليزية (English)"}
-              </Text>
-              <Text style={styles.date}>{formatDate(item.date)}</Text>
-              <Text style={styles.total}>
-                الإجمالي: {computeTotal(item).toFixed(2)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>لا توجد فواتير بعد</Text>
-        }
-      />
-      <TouchableOpacity style={styles.fab} onPress={openNewInvoice}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-      <InvoiceBottomSheet
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        invoiceToEdit={selectedInvoice}
-      />
-    </View>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <View style={styles.container}>
+        <FlatList
+          data={invoices}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: 32 + BOTTOM_RESERVED },
+          ]}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/invoice/${item.id}`)}
+              onLongPress={() => openEditInvoice(item)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.customerName}>{item.customerName}</Text>
+              <Text style={styles.companyName}>{item.companyName}</Text>
+              <View style={styles.row}>
+                <Text style={styles.typeBadge}>
+                  {item.type === "ARABIC_INV"
+                    ? "بالعربية (Arabic)"
+                    : "بالإنجليزية (English)"}
+                </Text>
+                <Text style={styles.date}>{formatDate(item.date)}</Text>
+                <Text style={styles.total}>
+                  الإجمالي: {computeTotal(item).toFixed(2)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.empty}>لا توجد فواتير بعد</Text>
+          }
+        />
+
+        {/* FAB lifted above the tab bar */}
+        <TouchableOpacity
+          style={[styles.fab, { bottom: 30 + BOTTOM_RESERVED }]}
+          onPress={openNewInvoice}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+
+        <InvoiceBottomSheet
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          invoiceToEdit={selectedInvoice}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#f3f4f6" },
   container: { flex: 1, backgroundColor: "#f3f4f6" },
   listContent: { padding: 16 },
   card: {
@@ -1621,7 +1682,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 30,
     right: 20,
     width: 56,
     height: 56,
@@ -1667,6 +1727,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 type ContactCard = {
   id: string;
@@ -1679,6 +1743,12 @@ type ScreenStatus = "loading" | "granted" | "denied" | "error";
 export default function MessagesScreen() {
   const [contacts, setContacts] = useState<ContactCard[]>([]);
   const [status, setStatus] = useState<ScreenStatus>("loading");
+
+  // Reserve space for the absolutely-positioned tab bar so the last row
+  // and the footer aren't hidden behind it.
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
 
   const loadContacts = useCallback(async () => {
     try {
@@ -1724,79 +1794,92 @@ export default function MessagesScreen() {
   // ---------- Loading ----------
   if (status === "loading") {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#111827" />
-        <Text style={styles.infoText}>جارٍ تحميل جهات الاتصال...</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#111827" />
+          <Text style={styles.infoText}>جارٍ تحميل جهات الاتصال...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   // ---------- Permission denied / error ----------
   if (status === "denied" || status === "error") {
     return (
-      <View style={styles.center}>
-        <MaterialIcons name="contacts" size={56} color="#9ca3af" />
-        <Text style={styles.errorTitle}>لا يمكن الوصول إلى جهات الاتصال</Text>
-        <Text style={styles.errorSubtitle}>
-          يرجى السماح بالوصول إلى جهات الاتصال لعرض قائمة الأسماء
-        </Text>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+        <View style={styles.center}>
+          <MaterialIcons name="contacts" size={56} color="#9ca3af" />
+          <Text style={styles.errorTitle}>لا يمكن الوصول إلى جهات الاتصال</Text>
+          <Text style={styles.errorSubtitle}>
+            يرجى السماح بالوصول إلى جهات الاتصال لعرض قائمة الأسماء
+          </Text>
 
-        <TouchableOpacity style={styles.primaryBtn} onPress={loadContacts}>
-          <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.primaryBtn} onPress={loadContacts}>
+            <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkBtn}
-          onPress={() => Linking.openSettings()}
-        >
-          <Text style={styles.linkBtnText}>فتح الإعدادات</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.linkBtn}
+            onPress={() => Linking.openSettings()}
+          >
+            <Text style={styles.linkBtnText}>فتح الإعدادات</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   // ---------- Contacts list ----------
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={contacts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} activeOpacity={0.7}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {item.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-
-            <View style={styles.infoBlock}>
-              <Text style={styles.name} numberOfLines={1}>
-                {item.name}
-              </Text>
-              {item.phone ? (
-                <Text style={styles.phone} numberOfLines={1}>
-                  {item.phone}
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <View style={styles.container}>
+        <FlatList
+          data={contacts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: 32 + BOTTOM_RESERVED },
+          ]}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {item.name.charAt(0).toUpperCase()}
                 </Text>
-              ) : null}
-            </View>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.infoText}>لا توجد جهات اتصال</Text>
-          </View>
-        }
-      />
+              </View>
 
-      <View style={styles.footerInfo}>
-        <Text style={styles.footerText}>{contacts.length} جهة اتصال</Text>
+              <View style={styles.infoBlock}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                {item.phone ? (
+                  <Text style={styles.phone} numberOfLines={1}>
+                    {item.phone}
+                  </Text>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={styles.infoText}>لا توجد جهات اتصال</Text>
+            </View>
+          }
+        />
+
+        {/* Footer sits above the tab bar, not behind it. */}
+        <View
+          style={[styles.footerInfo, { paddingBottom: 10 + insets.bottom }]}
+        >
+          <Text style={styles.footerText}>{contacts.length} جهة اتصال</Text>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#f3f4f6" },
   container: { flex: 1, backgroundColor: "#f3f4f6" },
   center: {
     flex: 1,
@@ -2663,18 +2746,20 @@ const styles = StyleSheet.create({
 });
 
 === ./src/app/project/[id]/report.tsx ===
+import type { ReportSize } from "@/services/repoetTemplates/A4";
 import { getArFinancialReportHtml } from "@/services/repoetTemplates/A4";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react"; // 👈 Add useEffect, useState
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import { exportPdf } from "../../../services/PdfService";
+import { exportPdf, PDF_PAGE_SIZES } from "../../../services/PdfService";
 import { useStore } from "../../../store/useStore";
 
 export default function ReportPreviewScreen() {
@@ -2684,71 +2769,89 @@ export default function ReportPreviewScreen() {
   }>();
 
   const { projects, transactions } = useStore();
-  const [htmlContent, setHtmlContent] = useState<string>(""); // 👈 Add state for HTML
+  const [htmlContent, setHtmlContent] = useState<string>("");
+  const [reportSize, setReportSize] = useState<ReportSize>("A4");
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const project = projects.find((p) => p.id === id);
+
+  // Keep a stable, filtered transaction list so the HTML effect re-runs
+  // when either the filter or the size changes.
+  const filteredTransactions = useMemo(() => {
+    return transactions
+      .filter((t) => t.projectId === id)
+      .filter((t) => {
+        if (!timeFilter || timeFilter === "ALL") return true;
+
+        const txTime = new Date(t.date).getTime();
+        const now = new Date();
+
+        if (timeFilter === "THIS_MONTH") {
+          const start = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1,
+          ).getTime();
+          return txTime >= start;
+        }
+        if (timeFilter === "LAST_MONTH") {
+          const start = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            1,
+          ).getTime();
+          const end = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            0,
+            23,
+            59,
+            59,
+            999,
+          ).getTime();
+          return txTime >= start && txTime <= end;
+        }
+        if (timeFilter === "THIS_YEAR") {
+          const start = new Date(now.getFullYear(), 0, 1).getTime();
+          return txTime >= start;
+        }
+        return true;
+      });
+  }, [id, timeFilter, transactions]);
+
+  const periodLabel = useMemo(() => {
+    let label = "تاريخ المشروع بالكامل";
+    if (timeFilter === "THIS_MONTH") label = "هذا الشهر";
+    if (timeFilter === "LAST_MONTH") label = "الشهر الماضي";
+    if (timeFilter === "THIS_YEAR") label = "هذا العام";
+    return label;
+  }, [timeFilter]);
 
   useEffect(() => {
     if (!project) return;
 
-    // 👇 Wrap generation in an async function
+    let cancelled = false;
+
     const generateHtml = async () => {
-      const filteredTransactions = transactions
-        .filter((t) => t.projectId === id)
-        .filter((t) => {
-          if (!timeFilter || timeFilter === "ALL") return true;
-
-          const txTime = new Date(t.date).getTime();
-          const now = new Date();
-
-          if (timeFilter === "THIS_MONTH") {
-            const start = new Date(
-              now.getFullYear(),
-              now.getMonth(),
-              1,
-            ).getTime();
-            return txTime >= start;
-          }
-          if (timeFilter === "LAST_MONTH") {
-            const start = new Date(
-              now.getFullYear(),
-              now.getMonth() - 1,
-              1,
-            ).getTime();
-            const end = new Date(
-              now.getFullYear(),
-              now.getMonth(),
-              0,
-              23,
-              59,
-              59,
-              999,
-            ).getTime();
-            return txTime >= start && txTime <= end;
-          }
-          if (timeFilter === "THIS_YEAR") {
-            const start = new Date(now.getFullYear(), 0, 1).getTime();
-            return txTime >= start;
-          }
-          return true;
-        });
-
-      let periodLabel = "تاريخ المشروع بالكامل";
-      if (timeFilter === "THIS_MONTH") periodLabel = "هذا الشهر";
-      if (timeFilter === "LAST_MONTH") periodLabel = "الشهر الماضي";
-      if (timeFilter === "THIS_YEAR") periodLabel = "هذا العام";
-
-      // 👇 Await the HTML generation
-      const html = await getArFinancialReportHtml(
-        project,
-        filteredTransactions,
-        periodLabel,
-      );
-      setHtmlContent(html);
+      setIsRegenerating(true);
+      try {
+        const html = await getArFinancialReportHtml(
+          project,
+          filteredTransactions,
+          periodLabel,
+          reportSize, // <-- new
+        );
+        if (!cancelled) setHtmlContent(html);
+      } finally {
+        if (!cancelled) setIsRegenerating(false);
+      }
     };
 
     generateHtml();
-  }, [id, timeFilter, project, transactions]);
+    return () => {
+      cancelled = true;
+    };
+  }, [project, filteredTransactions, periodLabel, reportSize]);
 
   if (!project) {
     return (
@@ -2758,7 +2861,6 @@ export default function ReportPreviewScreen() {
     );
   }
 
-  // 👇 Show a loading state while processing the image to Base64
   if (!htmlContent) {
     return (
       <View style={styles.center}>
@@ -2774,7 +2876,29 @@ export default function ReportPreviewScreen() {
     year: "numeric",
   });
 
-  const fileName = `التقرير المالي_${project.name}_${dateStr}.pdf`;
+  // Filename now includes the size so A4 and Mobile exports don't collide.
+  const sizeTag = reportSize === "A4" ? "A4" : "Mobile";
+  const fileName = `التقرير المالي_${project.name}_${dateStr}_${sizeTag}.pdf`;
+
+  // WebView needs help rendering the smaller page nicely. On Android,
+  // scalesPageToFit makes the small 340pt page fit the phone width. On iOS,
+  // the viewport meta inside the HTML (user-scalable=no) does that already.
+  // We ALSO inject a <style> to force the whole page to fit the view width
+  // while preserving proportions, since the template's @page rules only
+  // affect print output, not the WebView itself.
+  const injectedJS = `
+    (function() {
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'viewport';
+        document.head.appendChild(meta);
+      }
+      meta.content = 'width=device-width, initial-scale=1.0';
+      document.body.style.zoom = '${reportSize === "MOBILE" ? "1.35" : "1"}';
+      true;
+    })();
+  `;
 
   return (
     <>
@@ -2789,14 +2913,68 @@ export default function ReportPreviewScreen() {
           source={{ html: htmlContent }}
           style={styles.webview}
           originWhitelist={["*"]}
+          scalesPageToFit={Platform.OS === "android" ? true : undefined}
+          injectedJavaScript={injectedJS}
         />
 
+        {isRegenerating && (
+          <View style={styles.regenOverlay}>
+            <ActivityIndicator size="small" color="#111827" />
+            <Text style={styles.regenText}>جاري التحديث…</Text>
+          </View>
+        )}
+
         <View style={styles.footer}>
+          {/* Size toggle */}
+          <View style={styles.sizeRow}>
+            <Text style={styles.sizeLabel}>حجم الصفحة:</Text>
+            <View style={styles.sizeToggle}>
+              <TouchableOpacity
+                style={[
+                  styles.sizeBtn,
+                  reportSize === "A4" && styles.sizeBtnActive,
+                ]}
+                onPress={() => setReportSize("A4")}
+              >
+                <Text
+                  style={[
+                    styles.sizeBtnText,
+                    reportSize === "A4" && styles.sizeBtnTextActive,
+                  ]}
+                >
+                  A4
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.sizeBtn,
+                  reportSize === "MOBILE" && styles.sizeBtnActive,
+                ]}
+                onPress={() => setReportSize("MOBILE")}
+              >
+                <Text
+                  style={[
+                    styles.sizeBtnText,
+                    reportSize === "MOBILE" && styles.sizeBtnTextActive,
+                  ]}
+                >
+                  جوال
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Export button — passes the correct page dimensions to expo-print */}
           <TouchableOpacity
             style={styles.exportBtn}
-            onPress={() => exportPdf(htmlContent, fileName)}
+            onPress={() =>
+              exportPdf(htmlContent, fileName, PDF_PAGE_SIZES[reportSize])
+            }
+            disabled={isRegenerating}
           >
-            <Text style={styles.exportBtnText}>تصدير PDF</Text>
+            <Text style={styles.exportBtnText}>
+              تصدير PDF ({reportSize === "A4" ? "A4" : "جوال"})
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -2804,19 +2982,72 @@ export default function ReportPreviewScreen() {
   );
 }
 
-// (Keep your styles exactly the same below here)
-
-// (Keep styles the exact same)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f3f4f6" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   webview: { flex: 1, backgroundColor: "transparent" },
+
+  regenOverlay: {
+    position: "absolute",
+    top: 12,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "white",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  regenText: { fontSize: 12, color: "#374151", fontWeight: "600" },
+
   footer: {
     padding: 16,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
+    gap: 12,
   },
+  sizeRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sizeLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  sizeToggle: {
+    flexDirection: "row-reverse",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    padding: 3,
+    gap: 4,
+  },
+  sizeBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 64,
+    alignItems: "center",
+  },
+  sizeBtnActive: {
+    backgroundColor: "#111827",
+  },
+  sizeBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  sizeBtnTextActive: {
+    color: "#FFFFFF",
+  },
+
   exportBtn: {
     backgroundColor: "#111827",
     padding: 16,
@@ -5911,7 +6142,22 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Invoice, Project, Transaction } from "../types";
 
+import { formatCurrencyPdfWithCents } from "@/utils/format";
+import { getArabicInvoiceHtml } from "./invoiceTemplates/ar";
 import { getEnglishInvoiceHtml } from "./invoiceTemplates/en";
+import { getArFinancialReportHtml } from "./repoetTemplates/A4";
+
+// ----- PDF page sizes (in points; 1 inch = 72 pt) -----
+// A4: 210mm x 297mm = 595 x 842 pt
+// Mobile: a tall phone-card page (~120mm x 210mm) = ~340 x 595 pt.
+//         The width matters most — that's what makes text scale up on a
+//         phone without pinch-zoom. Height just controls where pages break.
+export const PDF_PAGE_SIZES = {
+  A4: { width: 595, height: 842 },
+  MOBILE: { width: 340, height: 600 },
+} as const;
+
+export type PdfPageSize = keyof typeof PDF_PAGE_SIZES;
 
 async function getImageBase64(uri: string): Promise<string> {
   try {
@@ -5924,13 +6170,6 @@ async function getImageBase64(uri: string): Promise<string> {
     return "";
   }
 }
-
-// src/services/PdfService.ts
-
-import { formatCurrencyPdfWithCents } from "@/utils/format";
-import { getArabicInvoiceHtml } from "./invoiceTemplates/ar";
-import { getArFinancialReportHtml } from "./repoetTemplates/A4";
-// ... other imports ...
 
 export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   // ----- Logo: try company logo, fallback to default app icon -----
@@ -5985,9 +6224,9 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
   // ----- Choose formatter based on invoice type -----
   let formatMoney: (val: number) => string;
   if (invoice.type === "ENGLISH_INV") {
-    formatMoney = formatCurrencyPdfWithCents; // two decimals
+    formatMoney = formatCurrencyPdfWithCents;
   } else {
-    formatMoney = formatCurrencyPdf; // whole dollars (original)
+    formatMoney = formatCurrencyPdf;
   }
 
   const dateStr = new Date(invoice.date).toLocaleDateString("en-US", {
@@ -6011,30 +6250,6 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       .replace(/'/g, "&#039;");
   };
 
-  // Build items rows (only used for ARABIC_INV; ENGLISH_INV builds its own)
-  const itemsRows = invoice.items
-    .map(
-      (item, index) => `
-        <tr>
-          <td class="line-number">${index + 1}</td>
-          <td class="item-description">
-            <div class="item-name">${escapeHtml(item.item)}</div>
-              ${
-                item.description
-                  ? `<div class="item-details">${escapeHtml(item.description)}</div>`
-                  : ""
-              }
-            </td>
-            <td class="operation">${escapeHtml(item.description) || "-"}</td>
-            <td class="units">${item.quantity}</td>
-            <td class="unit-price">${formatMoney(item.price)}</td>
-            <td class="total-price">${formatMoney(item.quantity * item.price)}</td>
-          </tr>
-        `,
-    )
-    .join("");
-
-  // Choose template based on invoice type
   if (invoice.type === "ARABIC_INV") {
     return getArabicInvoiceHtml(
       invoice,
@@ -6049,7 +6264,6 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
       total,
     );
   } else {
-    // ENGLISH_INV does NOT accept itemsRows – it builds its own internally
     return getEnglishInvoiceHtml(
       invoice,
       logoDataUri,
@@ -6067,16 +6281,24 @@ export const getInvoiceHtml = async (invoice: Invoice): Promise<string> => {
 
 export const exportInvoicePdf = async (invoice: Invoice) => {
   const html = await getInvoiceHtml(invoice);
-  const fileName = `فاتورة-${invoice.id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const fileName = `فاتورة-${invoice.id}-${new Date()
+    .toISOString()
+    .slice(0, 10)}.pdf`;
   await exportPdf(html, fileName);
 };
 
+// ----- NEW signature: optional 3rd arg `options` -----
 export const exportPdf = async (
   html: string,
   customFileName: string = "report.pdf",
+  options?: { width: number; height: number },
 ) => {
   try {
-    const { uri } = await Print.printToFileAsync({ html });
+    const { uri } = await Print.printToFileAsync({
+      html,
+      // expo-print accepts width/height in points for custom page size
+      ...(options ? { width: options.width, height: options.height } : {}),
+    });
     const safeFileName = customFileName.replace(/[:/\\?%*|"<>]/g, "-");
 
     const targetDirectory = uri.substring(0, uri.lastIndexOf("/") + 1);
@@ -7050,6 +7272,8 @@ import * as FileSystem from "expo-file-system/legacy";
 
 const LOGO_ASSET = require("@/assets/images/icon.png");
 
+export type ReportSize = "A4" | "MOBILE";
+
 async function getAssetBase64(asset: Asset): Promise<string> {
   await asset.downloadAsync();
   let uri = asset.localUri || asset.uri;
@@ -7080,6 +7304,7 @@ export const getArFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
   periodLabel: string = "تاريخ المشروع بالكامل",
+  size: ReportSize = "A4",
 ) => {
   let logoUri = "";
 
@@ -7090,6 +7315,8 @@ export const getArFinancialReportHtml = async (
   } catch (error) {
     console.error("Failed to load logo for PDF:", error);
   }
+
+  const isMobile = size === "MOBILE";
 
   const projectTransactions = transactions
     .filter((t) => t.projectId === project.id)
@@ -7107,15 +7334,10 @@ export const getArFinancialReportHtml = async (
     findDef(typeId)?.direction === "INFLOW";
 
   // -------- Category totals: seeded from project types, plus legacy ids --------
-  // Seeding from project types first guarantees a stable, ordered table that
-  // reflects the user's catalog (including custom types and archived ones).
   const categoryTotals: Record<string, number> = {};
   project.transactionTypes.forEach((t) => {
     categoryTotals[t.id] = 0;
   });
-  // Any transaction whose type id isn't in the catalog (e.g. an old id after
-  // a full delete of a custom type) still gets a bucket so the totals aren't
-  // silently dropped.
   projectTransactions.forEach((t) => {
     if (categoryTotals[t.type] === undefined) categoryTotals[t.type] = 0;
   });
@@ -7128,8 +7350,8 @@ export const getArFinancialReportHtml = async (
   let totalExpenses = 0;
   projectTransactions.forEach((t) => {
     const def = findDef(t.type);
-    if (!def || !def.affectsBalance) return; // informational-only types
-    if (def.id === "TRANSFER") return; // internal move: neither income nor expense
+    if (!def || !def.affectsBalance) return;
+    if (def.id === "TRANSFER") return;
     if (def.direction === "INFLOW") totalIncome += t.amount;
     else if (def.direction === "OUTFLOW") totalExpenses += t.amount;
   });
@@ -7159,22 +7381,98 @@ export const getArFinancialReportHtml = async (
     )
     .join("");
 
+  // -------- Size-specific @page rules --------
+  const pageRules = isMobile
+    ? `
+        @page {
+          size: 340pt 600pt; /* tall phone-card page, not A4 */
+          margin: 8mm;
+        }
+      `
+    : `
+        @page {
+          size: A4;
+          margin: 10mm;
+          @bottom-center {
+            content: counter(page);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #555;
+          }
+        }
+      `;
+
+  // -------- Size-specific font + layout overrides --------
+  const sizeOverrides = isMobile
+    ? `
+        body { font-size: 13px; }
+
+        /* Header: tighten whitespace on narrow page */
+        .header-container {
+          padding-bottom: 10px;
+          margin-bottom: 10px;
+        }
+        .header-info h1 { font-size: 20px; margin-bottom: 6px; }
+        .header-meta { gap: 6px; font-size: 11px; flex-direction: column; align-items: flex-start; }
+        .header-meta span { padding: 3px 8px; }
+        .logo { width: 70px; height: 70px; border-radius: 8px; margin-left: 6px; }
+
+        /* Both summary cards: tighter padding + no forced page break */
+        .summary-card {
+          padding: 12px;
+          border-radius: 10px;
+          margin-bottom: 12px;
+          page-break-inside: auto;
+        }
+        .summary-title {
+          font-size: 15px;
+          padding-bottom: 8px;
+          margin-bottom: 10px;
+        }
+
+        /* Balance cards stack to 1 column on phone width */
+        .balance-grid { grid-template-columns: 1fr; gap: 8px; }
+        .balance-card { padding: 10px; }
+        .balance-label { font-size: 12px; margin-bottom: 4px; }
+        .balance-value { font-size: 19px; }
+
+        .category-summary td, .category-summary th { padding: 6px; font-size: 11px; }
+
+        h2 { font-size: 15px; margin-bottom: 10px; }
+
+        /* Transaction table: widen the date column so Arabic dates fit
+           on one line, and let the description wrap when needed. */
+        table.transactions th, table.transactions td {
+          padding: 6px;
+          font-size: 10.5px;
+          white-space: nowrap;
+        }
+        table.transactions th:nth-child(1),
+        table.transactions td:nth-child(1) { width: 20%; }
+        table.transactions th:nth-child(2),
+        table.transactions td:nth-child(2) { width: 18%; }
+        table.transactions th:nth-child(3),
+        table.transactions td:nth-child(3) { width: 8%; }
+        table.transactions th:nth-child(4),
+        table.transactions td:nth-child(4) {
+          width: 36%;
+          white-space: normal;
+          word-break: break-word;
+        }
+        table.transactions th:nth-child(5),
+        table.transactions td:nth-child(5) { width: 18%; }
+
+        .transactions-section { page-break-before: auto; }
+      `
+    : ``;
+
   return `
-    <html dir="rtl" lang="ar">
+    <html dir="rtl" lang="ar" data-size="${size}">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
-          @page {
-            size: A4;
-            margin: 10mm;
-            @bottom-center {
-              content: counter(page);
-              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-              font-size: 12px;
-              color: #555;
-            }
-          }
+          ${pageRules}
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
             margin: 0; 
@@ -7184,6 +7482,7 @@ export const getArFinancialReportHtml = async (
             text-align: right; 
           }
           
+          /* ---------------- HEADER ---------------- */
           .header-container {
             display: flex;
             justify-content: space-between;
@@ -7192,7 +7491,7 @@ export const getArFinancialReportHtml = async (
             padding-bottom: 20px;
             margin-bottom: 25px;
           }
-          .header-info { text-align: right; }
+          .header-info { text-align: left; }
           .header-info h1 {
             margin: 0 0 10px 0;
             color: #0f172a;
@@ -7219,14 +7518,21 @@ export const getArFinancialReportHtml = async (
             margin-left: 10px;
           }
 
-          .summary-box { 
+          /* ---------------- SHARED SUMMARY CARD ----------------
+             Used by BOTH containers. Keeping the visual identical,
+             but they live as separate DOM nodes so the renderer can
+             break pages between them independently. This is what
+             fixes the "big empty space" when the category list is
+             long: the balance card no longer has to jump to page 2
+             with it, and the category card can break on its own. */
+          .summary-card {
             background: linear-gradient(145deg, #ffffff, #f8fafc);
-            padding: 20px; 
-            border-radius: 12px; 
-            margin-bottom: 30px; 
-            border: 1px solid #e2e8f0; 
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            page-break-inside: avoid; 
+            page-break-inside: avoid;
           }
           .summary-title {
             font-size: 18px;
@@ -7237,6 +7543,8 @@ export const getArFinancialReportHtml = async (
             border-bottom: 1px solid #e2e8f0;
             padding-bottom: 12px;
           }
+
+          /* Balance grid inside the first summary-card */
           .balance-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -7259,16 +7567,7 @@ export const getArFinancialReportHtml = async (
           .cash { color: #059669; }
           .bank { color: #2563eb; }
 
-          .category-summary {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px dashed #cbd5e1;
-          }
-          .category-summary h3 {
-            font-size: 16px;
-            color: #0f172a;
-            margin: 0 0 10px 0;
-          }
+          /* Category table inside the second summary-card */
           .category-summary table {
             width: 100%;
             border-collapse: collapse;
@@ -7290,6 +7589,7 @@ export const getArFinancialReportHtml = async (
             border-top: 2px solid #1e293b;
           }
 
+          /* ---------------- TRANSACTIONS ---------------- */
           h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
           table.transactions { width: 100%; border-collapse: collapse; table-layout: fixed; }
           table.transactions th, table.transactions td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
@@ -7312,9 +7612,12 @@ export const getArFinancialReportHtml = async (
           .transactions-section {
             page-break-before: always;
           }
+
+          /* ---- Mobile-specific overrides ---- */
+          ${sizeOverrides}
         </style>
       </head>
-      <body>
+      <body class="${isMobile ? "report-mobile" : "report-a4"}">
         <div class="header-container">
           <img src="${logoUri}" class="logo" alt="App Logo" />
           <div class="header-info">
@@ -7325,10 +7628,10 @@ export const getArFinancialReportHtml = async (
             </div>
           </div>
         </div>
-        
-        <div class="summary-box">
+
+        <!-- ========== CONTAINER 1: BALANCES ========== -->
+        <div class="summary-card">
           <h2 class="summary-title">ملخص الأرصدة والمعاملات</h2>
-          
           <div class="balance-grid">
             <div class="balance-card">
               <span class="balance-label">النقد الفعلي المتاح</span>
@@ -7339,31 +7642,33 @@ export const getArFinancialReportHtml = async (
               <span class="balance-value bank">${formatCurrency(project.currentBank)}</span>
             </div>
           </div>
-
-          <div class="category-summary">
-            <h3>ملخص المعاملات حسب الفئة</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th style="text-align:right;">الفئة</th>
-                  <th style="text-align:left;">المبلغ</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${categoryRows}
-                <tr class="total-row">
-                  <td style="text-align:right;">إجمالي الإيرادات</td>
-                  <td style="text-align:left; color:#10b981;">${formatCurrency(totalIncome)}</td>
-                </tr>
-                <tr class="total-row">
-                  <td style="text-align:right;">إجمالي المصروفات (غير الدخل)</td>
-                  <td style="text-align:left; color:#ef4444;">${formatCurrency(totalExpenses)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </div>
 
+        <!-- ========== CONTAINER 2: CATEGORY SUMMARY ========== -->
+        <div class="summary-card category-summary">
+          <h2 class="summary-title">ملخص المعاملات حسب الفئة</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:right;">الفئة</th>
+                <th style="text-align:left;">المبلغ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${categoryRows}
+              <tr class="total-row">
+                <td style="text-align:right;">إجمالي الإيرادات</td>
+                <td style="text-align:left; color:#10b981;">${formatCurrency(totalIncome)}</td>
+              </tr>
+              <tr class="total-row">
+                <td style="text-align:right;">إجمالي المصروفات (غير الدخل)</td>
+                <td style="text-align:left; color:#ef4444;">${formatCurrency(totalExpenses)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ========== TRANSACTIONS LOG ========== -->
         <div class="transactions-section">
           <h2>سجل المعاملات (${projectTransactions.length})</h2>
           <table class="transactions">
