@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AddTransactionBottomSheet from "../../components/AddTransactionBottomSheet";
 import { resolveType, useStore } from "../../store/useStore";
 import { Transaction } from "../../types";
@@ -26,6 +27,11 @@ export default function ProjectDetailScreen() {
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
 
+  // ---- Reserve space for the absolutely-positioned tab bar ----
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
+
   // Filter and Pagination States
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("ALL");
   const [visibleCount, setVisibleCount] = useState<number>(20);
@@ -38,7 +44,6 @@ export default function ProjectDetailScreen() {
 
   const project = projects.find((p) => p.id === id);
 
-  // ---- Resolve a type definition from THIS project's catalog ----
   const getTypeDef = (typeId: string) => resolveType(project, typeId);
 
   const getTypeLabel = (typeId: string) => {
@@ -51,7 +56,6 @@ export default function ProjectDetailScreen() {
     return def?.direction === "INFLOW";
   };
 
-  // ---- Range window derived from the selected filter ----
   const range = useMemo(() => {
     const now = new Date();
     switch (timeFilter) {
@@ -87,7 +91,6 @@ export default function ProjectDetailScreen() {
           end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime(),
         };
       case "CUSTOM": {
-        // Partial ranges allowed: only start → [start, ∞), only end → (−∞, end]
         const start = customStart ? customStart.getTime() : 0;
         const end = customEnd
           ? new Date(
@@ -108,13 +111,11 @@ export default function ProjectDetailScreen() {
     }
   }, [timeFilter, customStart, customEnd]);
 
-  // ---- All project transactions ----
   const projectTransactions = useMemo(
     () => transactions.filter((t) => t.projectId === id),
     [transactions, id],
   );
 
-  // ---- Filtered + sorted list ----
   const filteredTransactions = useMemo(() => {
     return projectTransactions
       .filter((t) => {
@@ -129,10 +130,6 @@ export default function ProjectDetailScreen() {
     [filteredTransactions, visibleCount],
   );
 
-  // ---- Summary for the active range ----
-  // Balances: initial + Σ(deltas within range) — matches dashboard behaviour.
-  // Loans:   derived from each type's countsAsLoanGiven/Received flags,
-  //          NOT hardcoded to INCOME / LOAN_RECEIVED ids.
   const summary = useMemo(() => {
     let cash = project?.initialCash ?? 0;
     let bank = project?.initialBank ?? 0;
@@ -144,16 +141,13 @@ export default function ProjectDetailScreen() {
       if (ts < range.start || ts > range.end) return;
 
       const def = resolveType(project, t.type);
-      // Unknown or informational-only type: no balance effect.
       if (!def || !def.affectsBalance) return;
 
       if (def.id === "TRANSFER") {
         if (t.method === "BANK") {
-          // Deposit cash → bank
           bank += t.amount;
           cash -= t.amount;
         } else {
-          // Withdraw bank → cash
           cash += t.amount;
           bank -= t.amount;
         }
@@ -171,7 +165,6 @@ export default function ProjectDetailScreen() {
     return { cash, bank, given, received, net: received - given };
   }, [project, projectTransactions, range]);
 
-  // ---- Period label for the summary header ----
   const periodLabel = useMemo(() => {
     if (timeFilter === "ALL") return "كل الفترات";
     if (timeFilter === "THIS_MONTH") return "هذا الشهر";
@@ -242,6 +235,7 @@ export default function ProjectDetailScreen() {
           </View>
           <Text style={styles.headerTitle}>العمليات</Text>
         </View>
+
         {/* ====== SUMMARY CARD ====== */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryPeriodRow}>
@@ -333,7 +327,6 @@ export default function ProjectDetailScreen() {
             ))}
           </ScrollView>
 
-          {/* Custom range pickers */}
           {timeFilter === "CUSTOM" && (
             <View style={styles.customRangeRow}>
               <TouchableOpacity
@@ -411,12 +404,16 @@ export default function ProjectDetailScreen() {
         <FlatList
           data={paginatedTransactions}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          // reserve space for FAB (64) + tab bar
+          contentContainerStyle={{ paddingBottom: 80 + BOTTOM_RESERVED }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           renderItem={({ item }) => {
             const def = getTypeDef(item.type);
             const inflow = def?.direction === "INFLOW";
+            const isLoan = !!(
+              def?.countsAsLoanGiven || def?.countsAsLoanReceived
+            );
             return (
               <TouchableOpacity
                 style={styles.txCard}
@@ -435,6 +432,26 @@ export default function ProjectDetailScreen() {
                   </TouchableOpacity>
 
                   <View style={styles.txInfo}>
+                    {isLoan && item.person ? (
+                      <View style={styles.personRow}>
+                        <View style={styles.personAvatar}>
+                          <Text style={styles.personAvatarText}>
+                            {item.person.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={styles.personTextBlock}>
+                          <Text style={styles.personName} numberOfLines={1}>
+                            {item.person.name}
+                          </Text>
+                          {item.person.phone ? (
+                            <Text style={styles.personPhone} numberOfLines={1}>
+                              {item.person.phone}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ) : null}
+
                     <Text style={styles.txDesc}>{item.description}</Text>
                     <View style={styles.txMetaRow}>
                       <Text
@@ -467,9 +484,9 @@ export default function ProjectDetailScreen() {
           }
         />
 
-        {/* FAB */}
+        {/* FAB — lifted above the tab bar */}
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, { bottom: 16 + BOTTOM_RESERVED }]}
           onPress={() => {
             setSelectedTransaction(null);
             setModalVisible(true);
@@ -511,7 +528,6 @@ const styles = StyleSheet.create({
   },
   reportBtnText: { color: "white", fontWeight: "600" },
 
-  // ----- Summary Card -----
   summaryContainer: {
     backgroundColor: "white",
     borderRadius: 12,
@@ -548,28 +564,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     marginVertical: 4,
   },
-  summaryItem: {
-    alignItems: "center",
-    flex: 1,
-  },
+  summaryItem: { alignItems: "center", flex: 1 },
   summaryLabel: {
     fontSize: 12,
     color: "#6b7280",
     marginBottom: 4,
   },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  summaryValue: { fontSize: 18, fontWeight: "bold" },
   cash: { color: "#059669" },
   bank: { color: "#2563eb" },
   loanGiven: { color: "#dc2626" },
   loanReceived: { color: "#8B5CF6" },
-  divider: {
-    height: 1,
-    backgroundColor: "#e5e7eb",
-    marginVertical: 10,
-  },
+  divider: { height: 1, backgroundColor: "#e5e7eb", marginVertical: 10 },
   netLoanContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -579,26 +585,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
   },
-  netLoanLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  netLoanValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  netLoanLabel: { fontSize: 14, fontWeight: "600", color: "#374151" },
+  netLoanValue: { fontSize: 18, fontWeight: "bold" },
   positiveNet: { color: "#8B5CF6" },
   negativeNet: { color: "#dc2626" },
 
-  // ----- Filters -----
-  filterContainer: {
-    marginBottom: 16,
-  },
-  filterScroll: {
-    gap: 8,
-    flexDirection: "row-reverse",
-  },
+  filterContainer: { marginBottom: 16 },
+  filterScroll: { gap: 8, flexDirection: "row-reverse" },
   filterChip: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -611,17 +604,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#dbeafe",
     borderColor: "#000000",
   },
-  filterChipText: {
-    color: "#4b5563",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  filterChipTextActive: {
-    color: "#000000",
-    fontWeight: "bold",
-  },
+  filterChipText: { color: "#4b5563", fontSize: 14, fontWeight: "500" },
+  filterChipTextActive: { color: "#000000", fontWeight: "bold" },
 
-  // ----- Custom range -----
   customRangeRow: {
     flexDirection: "row-reverse",
     gap: 8,
@@ -644,11 +629,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 2,
   },
-  dateBtnValue: {
-    fontSize: 13,
-    color: "#111827",
-    fontWeight: "700",
-  },
+  dateBtnValue: { fontSize: 13, color: "#111827", fontWeight: "700" },
   clearRangeBtn: {
     justifyContent: "center",
     alignItems: "center",
@@ -668,12 +649,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  iosDoneBtnText: {
-    color: "#111827",
-    fontWeight: "700",
-  },
+  iosDoneBtnText: { color: "#111827", fontWeight: "700" },
 
-  // ----- Transaction Cards -----
   txCard: {
     backgroundColor: "white",
     padding: 16,
@@ -701,7 +678,6 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: "center", color: "#6b7280", marginTop: 40 },
   fab: {
     position: "absolute",
-    bottom: 30,
     right: 20,
     width: 56,
     height: 56,
@@ -737,11 +713,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   gearBtn: {
     width: 36,
     height: 36,
@@ -749,5 +721,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  personRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+    paddingBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e5e7eb",
+    width: "100%",
+    justifyContent: "flex-start",
+  },
+  personAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#0F172A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  personAvatarText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  personTextBlock: { alignItems: "flex-end" },
+  personName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    textAlign: "right",
+  },
+  personPhone: {
+    fontSize: 11,
+    color: "#64748B",
+    textAlign: "right",
+    writingDirection: "ltr",
   },
 });

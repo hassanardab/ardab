@@ -127,7 +127,8 @@ adb reverse tcp:8081 tcp:8081
 ## v2.11
 
 [x] the contacts asks for phone contact ppermission the it list all of them
-[] you can change the catefhori on the transaction form
+[x] you can change the catefhori on the transaction form
 
-[] we have profile page with avatar circlar and we have the page
-[]
+[] we can add time to the invoice 3pm default
+[] list categories on transaction form
+[] id phone number

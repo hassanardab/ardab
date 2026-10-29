@@ -84,7 +84,10 @@ function TabsShell() {
         }}
       />
       <Tabs.Screen name="project/[id]" options={{ href: null }} />
-      <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
+      <Tabs.Screen
+        name="project/[id]/report"
+        options={{ href: null, headerShown: false }}
+      />
       <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
       <Tabs.Screen name="project/[id]/settings" options={{ href: null }} />
     </Tabs>

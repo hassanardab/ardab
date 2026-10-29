@@ -292,10 +292,11 @@ adb reverse tcp:8081 tcp:8081
 ## v2.11
 
 [x] the contacts asks for phone contact ppermission the it list all of them
-[] you can change the catefhori on the transaction form
+[x] you can change the catefhori on the transaction form
 
-[] we have profile page with avatar circlar and we have the page
-[]
+[] we can add time to the invoice 3pm default
+[] list categories on transaction form
+[] id phone number
 
 === ./app.json ===
 {
@@ -721,7 +722,10 @@ function TabsShell() {
         }}
       />
       <Tabs.Screen name="project/[id]" options={{ href: null }} />
-      <Tabs.Screen name="project/[id]/report" options={{ href: null }} />
+      <Tabs.Screen
+        name="project/[id]/report"
+        options={{ href: null, headerShown: false }}
+      />
       <Tabs.Screen name="invoice/[id]" options={{ href: null }} />
       <Tabs.Screen name="project/[id]/settings" options={{ href: null }} />
     </Tabs>
@@ -1714,10 +1718,10 @@ const styles = StyleSheet.create({
 });
 
 === ./src/app/messages.tsx ===
-// src/app/messages.tsx
 import { MaterialIcons } from "@expo/vector-icons";
-import * as Contacts from "expo-contacts";
+import * as Contacts from "expo-contacts/legacy";
 import { useCallback, useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   FlatList,
@@ -1744,8 +1748,7 @@ export default function MessagesScreen() {
   const [contacts, setContacts] = useState<ContactCard[]>([]);
   const [status, setStatus] = useState<ScreenStatus>("loading");
 
-  // Reserve space for the absolutely-positioned tab bar so the last row
-  // and the footer aren't hidden behind it.
+  // Reserve space for the bottom tab bar and device safe area.
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = 56;
   const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
@@ -1754,35 +1757,78 @@ export default function MessagesScreen() {
     try {
       setStatus("loading");
 
-      // 1) Ask for permission
-      const { status: permStatus } = await Contacts.requestPermissionsAsync();
+      // Check existing permission before requesting it.
+      let permission = await Contacts.getPermissionsAsync();
 
-      if (permStatus !== "granted") {
+      if (permission.status !== "granted") {
+        permission = await Contacts.requestPermissionsAsync();
+      }
+
+      if (permission.status !== "granted") {
+        setContacts([]);
         setStatus("denied");
         return;
       }
 
-      // 2) Fetch contacts
-      const { data } = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+      // Fetch contact names and phone numbers.
+      const result = await Contacts.getContactsAsync({
+        fields: [
+          Contacts.Fields.Name,
+          Contacts.Fields.FirstName,
+          Contacts.Fields.LastName,
+          Contacts.Fields.PhoneNumbers,
+        ],
         sort: Contacts.SortTypes.FirstName,
+        pageSize: 1000,
+        pageOffset: 0,
       });
 
-      // 3) Keep only entries that actually have a name, sort them
-      const formatted: ContactCard[] = data
-        .filter((c) => c.name && c.name.trim().length > 0)
-        .map((c) => ({
-          id:
-            c.id ?? `${c.name}-${c.phoneNumbers?.[0]?.number ?? Math.random()}`,
-          name: c.name!.trim(),
-          phone: c.phoneNumbers?.[0]?.number,
-        }))
+      console.log(
+        "[Contacts] Retrieved records:",
+        result.data.length,
+        "Has next page:",
+        result.hasNextPage,
+      );
+
+      // Explicitly build ContactCard[] to avoid null type errors.
+      const formatted = result.data
+        .reduce<ContactCard[]>((acc, contact) => {
+          const firstName = contact.firstName?.trim() ?? "";
+          const lastName = contact.lastName?.trim() ?? "";
+
+          const name =
+            contact.name?.trim() || `${firstName} ${lastName}`.trim();
+
+          const phone = contact.phoneNumbers
+            ?.find((item) => item.number?.trim())
+            ?.number?.trim();
+
+          // Keep contacts with a name or a phone number.
+          if (!name && !phone) {
+            return acc;
+          }
+
+          const displayName = name || phone || "Unknown contact";
+
+          acc.push({
+            id:
+              contact.id ??
+              `${displayName}-${phone ?? `${firstName}-${lastName}`}`,
+            name: displayName,
+            phone,
+          });
+
+          return acc;
+        }, [])
         .sort((a, b) => a.name.localeCompare(b.name));
+
+      console.log("[Contacts] Displayable records:", formatted.length);
 
       setContacts(formatted);
       setStatus("granted");
-    } catch (err) {
-      console.warn("Contacts error:", err);
+    } catch (error) {
+      console.error("[Contacts] Loading failed:", error);
+      setContacts([]);
       setStatus("error");
     }
   }, []);
@@ -1809,18 +1855,25 @@ export default function MessagesScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.center}>
           <MaterialIcons name="contacts" size={56} color="#9ca3af" />
+
           <Text style={styles.errorTitle}>لا يمكن الوصول إلى جهات الاتصال</Text>
+
           <Text style={styles.errorSubtitle}>
             يرجى السماح بالوصول إلى جهات الاتصال لعرض قائمة الأسماء
           </Text>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={loadContacts}>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={loadContacts}
+            activeOpacity={0.8}
+          >
             <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.linkBtn}
             onPress={() => Linking.openSettings()}
+            activeOpacity={0.8}
           >
             <Text style={styles.linkBtnText}>فتح الإعدادات</Text>
           </TouchableOpacity>
@@ -1838,7 +1891,10 @@ export default function MessagesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: 32 + BOTTOM_RESERVED },
+            {
+              paddingBottom: 32 + BOTTOM_RESERVED,
+              flexGrow: contacts.length === 0 ? 1 : undefined,
+            },
           ]}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.card} activeOpacity={0.7}>
@@ -1852,6 +1908,7 @@ export default function MessagesScreen() {
                 <Text style={styles.name} numberOfLines={1}>
                   {item.name}
                 </Text>
+
                 {item.phone ? (
                   <Text style={styles.phone} numberOfLines={1}>
                     {item.phone}
@@ -1861,13 +1918,14 @@ export default function MessagesScreen() {
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <View style={styles.center}>
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="person-search" size={44} color="#9ca3af" />
               <Text style={styles.infoText}>لا توجد جهات اتصال</Text>
             </View>
           }
         />
 
-        {/* Footer sits above the tab bar, not behind it. */}
+        {/* Footer remains above the bottom tab bar. */}
         <View
           style={[styles.footerInfo, { paddingBottom: 10 + insets.bottom }]}
         >
@@ -1879,14 +1937,26 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#f3f4f6" },
-  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+  },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
     backgroundColor: "#f3f4f6",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
   },
   listContent: {
     padding: 16,
@@ -1895,11 +1965,11 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: "#ffffff",
     padding: 14,
     borderRadius: 12,
     marginBottom: 10,
-    shadowColor: "#000",
+    shadowColor: "#000000",
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
@@ -1914,7 +1984,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   avatarText: {
-    color: "white",
+    color: "#ffffff",
     fontSize: 18,
     fontWeight: "700",
   },
@@ -1963,7 +2033,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   primaryBtnText: {
-    color: "white",
+    color: "#ffffff",
     fontWeight: "600",
     fontSize: 14,
   },
@@ -1980,7 +2050,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 0.5,
     borderTopColor: "#e5e7eb",
-    backgroundColor: "white",
+    backgroundColor: "#ffffff",
     alignItems: "center",
   },
   footerText: {
@@ -2004,6 +2074,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AddTransactionBottomSheet from "../../components/AddTransactionBottomSheet";
 import { resolveType, useStore } from "../../store/useStore";
 import { Transaction } from "../../types";
@@ -2019,6 +2090,11 @@ export default function ProjectDetailScreen() {
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
 
+  // ---- Reserve space for the absolutely-positioned tab bar ----
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
+
   // Filter and Pagination States
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("ALL");
   const [visibleCount, setVisibleCount] = useState<number>(20);
@@ -2031,7 +2107,6 @@ export default function ProjectDetailScreen() {
 
   const project = projects.find((p) => p.id === id);
 
-  // ---- Resolve a type definition from THIS project's catalog ----
   const getTypeDef = (typeId: string) => resolveType(project, typeId);
 
   const getTypeLabel = (typeId: string) => {
@@ -2044,7 +2119,6 @@ export default function ProjectDetailScreen() {
     return def?.direction === "INFLOW";
   };
 
-  // ---- Range window derived from the selected filter ----
   const range = useMemo(() => {
     const now = new Date();
     switch (timeFilter) {
@@ -2080,7 +2154,6 @@ export default function ProjectDetailScreen() {
           end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999).getTime(),
         };
       case "CUSTOM": {
-        // Partial ranges allowed: only start → [start, ∞), only end → (−∞, end]
         const start = customStart ? customStart.getTime() : 0;
         const end = customEnd
           ? new Date(
@@ -2101,13 +2174,11 @@ export default function ProjectDetailScreen() {
     }
   }, [timeFilter, customStart, customEnd]);
 
-  // ---- All project transactions ----
   const projectTransactions = useMemo(
     () => transactions.filter((t) => t.projectId === id),
     [transactions, id],
   );
 
-  // ---- Filtered + sorted list ----
   const filteredTransactions = useMemo(() => {
     return projectTransactions
       .filter((t) => {
@@ -2122,10 +2193,6 @@ export default function ProjectDetailScreen() {
     [filteredTransactions, visibleCount],
   );
 
-  // ---- Summary for the active range ----
-  // Balances: initial + Σ(deltas within range) — matches dashboard behaviour.
-  // Loans:   derived from each type's countsAsLoanGiven/Received flags,
-  //          NOT hardcoded to INCOME / LOAN_RECEIVED ids.
   const summary = useMemo(() => {
     let cash = project?.initialCash ?? 0;
     let bank = project?.initialBank ?? 0;
@@ -2137,16 +2204,13 @@ export default function ProjectDetailScreen() {
       if (ts < range.start || ts > range.end) return;
 
       const def = resolveType(project, t.type);
-      // Unknown or informational-only type: no balance effect.
       if (!def || !def.affectsBalance) return;
 
       if (def.id === "TRANSFER") {
         if (t.method === "BANK") {
-          // Deposit cash → bank
           bank += t.amount;
           cash -= t.amount;
         } else {
-          // Withdraw bank → cash
           cash += t.amount;
           bank -= t.amount;
         }
@@ -2164,7 +2228,6 @@ export default function ProjectDetailScreen() {
     return { cash, bank, given, received, net: received - given };
   }, [project, projectTransactions, range]);
 
-  // ---- Period label for the summary header ----
   const periodLabel = useMemo(() => {
     if (timeFilter === "ALL") return "كل الفترات";
     if (timeFilter === "THIS_MONTH") return "هذا الشهر";
@@ -2235,6 +2298,7 @@ export default function ProjectDetailScreen() {
           </View>
           <Text style={styles.headerTitle}>العمليات</Text>
         </View>
+
         {/* ====== SUMMARY CARD ====== */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryPeriodRow}>
@@ -2326,7 +2390,6 @@ export default function ProjectDetailScreen() {
             ))}
           </ScrollView>
 
-          {/* Custom range pickers */}
           {timeFilter === "CUSTOM" && (
             <View style={styles.customRangeRow}>
               <TouchableOpacity
@@ -2404,12 +2467,16 @@ export default function ProjectDetailScreen() {
         <FlatList
           data={paginatedTransactions}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          // reserve space for FAB (64) + tab bar
+          contentContainerStyle={{ paddingBottom: 80 + BOTTOM_RESERVED }}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           renderItem={({ item }) => {
             const def = getTypeDef(item.type);
             const inflow = def?.direction === "INFLOW";
+            const isLoan = !!(
+              def?.countsAsLoanGiven || def?.countsAsLoanReceived
+            );
             return (
               <TouchableOpacity
                 style={styles.txCard}
@@ -2428,6 +2495,26 @@ export default function ProjectDetailScreen() {
                   </TouchableOpacity>
 
                   <View style={styles.txInfo}>
+                    {isLoan && item.person ? (
+                      <View style={styles.personRow}>
+                        <View style={styles.personAvatar}>
+                          <Text style={styles.personAvatarText}>
+                            {item.person.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={styles.personTextBlock}>
+                          <Text style={styles.personName} numberOfLines={1}>
+                            {item.person.name}
+                          </Text>
+                          {item.person.phone ? (
+                            <Text style={styles.personPhone} numberOfLines={1}>
+                              {item.person.phone}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ) : null}
+
                     <Text style={styles.txDesc}>{item.description}</Text>
                     <View style={styles.txMetaRow}>
                       <Text
@@ -2460,9 +2547,9 @@ export default function ProjectDetailScreen() {
           }
         />
 
-        {/* FAB */}
+        {/* FAB — lifted above the tab bar */}
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, { bottom: 16 + BOTTOM_RESERVED }]}
           onPress={() => {
             setSelectedTransaction(null);
             setModalVisible(true);
@@ -2504,7 +2591,6 @@ const styles = StyleSheet.create({
   },
   reportBtnText: { color: "white", fontWeight: "600" },
 
-  // ----- Summary Card -----
   summaryContainer: {
     backgroundColor: "white",
     borderRadius: 12,
@@ -2541,28 +2627,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     marginVertical: 4,
   },
-  summaryItem: {
-    alignItems: "center",
-    flex: 1,
-  },
+  summaryItem: { alignItems: "center", flex: 1 },
   summaryLabel: {
     fontSize: 12,
     color: "#6b7280",
     marginBottom: 4,
   },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  summaryValue: { fontSize: 18, fontWeight: "bold" },
   cash: { color: "#059669" },
   bank: { color: "#2563eb" },
   loanGiven: { color: "#dc2626" },
   loanReceived: { color: "#8B5CF6" },
-  divider: {
-    height: 1,
-    backgroundColor: "#e5e7eb",
-    marginVertical: 10,
-  },
+  divider: { height: 1, backgroundColor: "#e5e7eb", marginVertical: 10 },
   netLoanContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2572,26 +2648,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
   },
-  netLoanLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  netLoanValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  netLoanLabel: { fontSize: 14, fontWeight: "600", color: "#374151" },
+  netLoanValue: { fontSize: 18, fontWeight: "bold" },
   positiveNet: { color: "#8B5CF6" },
   negativeNet: { color: "#dc2626" },
 
-  // ----- Filters -----
-  filterContainer: {
-    marginBottom: 16,
-  },
-  filterScroll: {
-    gap: 8,
-    flexDirection: "row-reverse",
-  },
+  filterContainer: { marginBottom: 16 },
+  filterScroll: { gap: 8, flexDirection: "row-reverse" },
   filterChip: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -2604,17 +2667,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#dbeafe",
     borderColor: "#000000",
   },
-  filterChipText: {
-    color: "#4b5563",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  filterChipTextActive: {
-    color: "#000000",
-    fontWeight: "bold",
-  },
+  filterChipText: { color: "#4b5563", fontSize: 14, fontWeight: "500" },
+  filterChipTextActive: { color: "#000000", fontWeight: "bold" },
 
-  // ----- Custom range -----
   customRangeRow: {
     flexDirection: "row-reverse",
     gap: 8,
@@ -2637,11 +2692,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 2,
   },
-  dateBtnValue: {
-    fontSize: 13,
-    color: "#111827",
-    fontWeight: "700",
-  },
+  dateBtnValue: { fontSize: 13, color: "#111827", fontWeight: "700" },
   clearRangeBtn: {
     justifyContent: "center",
     alignItems: "center",
@@ -2661,12 +2712,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  iosDoneBtnText: {
-    color: "#111827",
-    fontWeight: "700",
-  },
+  iosDoneBtnText: { color: "#111827", fontWeight: "700" },
 
-  // ----- Transaction Cards -----
   txCard: {
     backgroundColor: "white",
     padding: 16,
@@ -2694,7 +2741,6 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: "center", color: "#6b7280", marginTop: 40 },
   fab: {
     position: "absolute",
-    bottom: 30,
     right: 20,
     width: 56,
     height: 56,
@@ -2730,11 +2776,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   gearBtn: {
     width: 36,
     height: 36,
@@ -2742,6 +2784,40 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  personRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+    paddingBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e5e7eb",
+    width: "100%",
+    justifyContent: "flex-start",
+  },
+  personAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#0F172A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  personAvatarText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  personTextBlock: { alignItems: "flex-end" },
+  personName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    textAlign: "right",
+  },
+  personPhone: {
+    fontSize: 11,
+    color: "#64748B",
+    textAlign: "right",
+    writingDirection: "ltr",
   },
 });
 
@@ -2758,6 +2834,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { exportPdf, PDF_PAGE_SIZES } from "../../../services/PdfService";
 import { useStore } from "../../../store/useStore";
@@ -2773,10 +2850,13 @@ export default function ReportPreviewScreen() {
   const [reportSize, setReportSize] = useState<ReportSize>("A4");
   const [isRegenerating, setIsRegenerating] = useState(false);
 
+  // ---- Reserve space for the absolutely-positioned tab bar ----
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
+
   const project = projects.find((p) => p.id === id);
 
-  // Keep a stable, filtered transaction list so the HTML effect re-runs
-  // when either the filter or the size changes.
   const filteredTransactions = useMemo(() => {
     return transactions
       .filter((t) => t.projectId === id)
@@ -2839,7 +2919,7 @@ export default function ReportPreviewScreen() {
           project,
           filteredTransactions,
           periodLabel,
-          reportSize, // <-- new
+          reportSize,
         );
         if (!cancelled) setHtmlContent(html);
       } finally {
@@ -2865,7 +2945,7 @@ export default function ReportPreviewScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#111827" />
-        <Text style={{ marginTop: 12 }}>جاري تجهيز التقرير...</Text>
+        <Text style={{ marginTop: 12 }}>جارٍ تجهيز التقرير...</Text>
       </View>
     );
   }
@@ -2876,16 +2956,9 @@ export default function ReportPreviewScreen() {
     year: "numeric",
   });
 
-  // Filename now includes the size so A4 and Mobile exports don't collide.
   const sizeTag = reportSize === "A4" ? "A4" : "Mobile";
   const fileName = `التقرير المالي_${project.name}_${dateStr}_${sizeTag}.pdf`;
 
-  // WebView needs help rendering the smaller page nicely. On Android,
-  // scalesPageToFit makes the small 340pt page fit the phone width. On iOS,
-  // the viewport meta inside the HTML (user-scalable=no) does that already.
-  // We ALSO inject a <style> to force the whole page to fit the view width
-  // while preserving proportions, since the template's @page rules only
-  // affect print output, not the WebView itself.
   const injectedJS = `
     (function() {
       var meta = document.querySelector('meta[name="viewport"]');
@@ -2920,12 +2993,13 @@ export default function ReportPreviewScreen() {
         {isRegenerating && (
           <View style={styles.regenOverlay}>
             <ActivityIndicator size="small" color="#111827" />
-            <Text style={styles.regenText}>جاري التحديث…</Text>
+            <Text style={styles.regenText}>جارٍ التحديث…</Text>
           </View>
         )}
 
-        <View style={styles.footer}>
-          {/* Size toggle */}
+        {/* Footer is safe-area aware so the export button sits above
+            the absolutely-positioned tab bar. */}
+        <View style={[styles.footer, { paddingBottom: 16 + BOTTOM_RESERVED }]}>
           <View style={styles.sizeRow}>
             <Text style={styles.sizeLabel}>حجم الصفحة:</Text>
             <View style={styles.sizeToggle}>
@@ -2964,7 +3038,6 @@ export default function ReportPreviewScreen() {
             </View>
           </View>
 
-          {/* Export button — passes the correct page dimensions to expo-print */}
           <TouchableOpacity
             style={styles.exportBtn}
             onPress={() =>
@@ -3006,7 +3079,9 @@ const styles = StyleSheet.create({
   regenText: { fontSize: 12, color: "#374151", fontWeight: "600" },
 
   footer: {
-    padding: 16,
+    // top padding only — bottom is applied dynamically for the tab bar
+    paddingTop: 16,
+    paddingHorizontal: 16,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
@@ -3036,17 +3111,13 @@ const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: "center",
   },
-  sizeBtnActive: {
-    backgroundColor: "#111827",
-  },
+  sizeBtnActive: { backgroundColor: "#111827" },
   sizeBtnText: {
     fontSize: 13,
     fontWeight: "700",
     color: "#475569",
   },
-  sizeBtnTextActive: {
-    color: "#FFFFFF",
-  },
+  sizeBtnTextActive: { color: "#FFFFFF" },
 
   exportBtn: {
     backgroundColor: "#111827",
@@ -3885,10 +3956,16 @@ const styles = StyleSheet.create({
 });
 
 === ./src/components/AddTransactionBottomSheet.tsx ===
+// src/components/AddTransactionBottomSheet.tsx
+import { MaterialIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useMemo, useRef, useState } from "react";
+import * as Contacts from "expo-contacts/legacy";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -3899,7 +3976,13 @@ import {
   View,
 } from "react-native";
 import { useStore } from "../store/useStore";
-import { PaymentMethod, Transaction } from "../types";
+import {
+  LoanPerson,
+  PaymentMethod,
+  Transaction,
+  TransactionDirection,
+  TransactionTypeDef,
+} from "../types";
 import { formatNumberInput, parseFormattedNumber } from "../utils/format";
 
 interface Props {
@@ -3908,6 +3991,32 @@ interface Props {
   onClose: () => void;
   transactionToEdit?: Transaction | null;
 }
+
+const GROUP_META: Record<
+  TransactionDirection,
+  { label: string; hint: string; accent: string }
+> = {
+  OUTFLOW: { label: "المصروفات", hint: "تقلل الرصيد", accent: "#EF4444" },
+  INFLOW: { label: "الإيرادات", hint: "تزيد الرصيد", accent: "#10B981" },
+  NEUTRAL: {
+    label: "معاملات محايدة",
+    hint: "لا تؤثر على الرصيد",
+    accent: "#2563EB",
+  },
+};
+
+const GROUP_ORDER: TransactionDirection[] = ["OUTFLOW", "INFLOW", "NEUTRAL"];
+
+const isLoanType = (def: TransactionTypeDef | undefined): boolean =>
+  !!(def?.countsAsLoanGiven || def?.countsAsLoanReceived);
+
+type ContactCard = {
+  id: string;
+  name: string;
+  phone?: string;
+};
+
+type ContactsStatus = "idle" | "loading" | "granted" | "denied" | "error";
 
 export default function AddTransactionBottomSheet({
   projectId,
@@ -3920,14 +4029,11 @@ export default function AddTransactionBottomSheet({
 
   const project = projects.find((p) => p.id === projectId);
 
-  // Active (non-archived) types for the picker.
   const activeTypes = useMemo(
     () => (project?.transactionTypes ?? []).filter((t) => !t.archived),
     [project],
   );
 
-  // If the transaction being edited references an archived type, we still
-  // want it visible so the user isn't confused by the selection vanishing.
   const archivedEditingType = useMemo(() => {
     if (!transactionToEdit || !project) return undefined;
     const def = project.transactionTypes.find(
@@ -3941,15 +4047,121 @@ export default function AddTransactionBottomSheet({
     return [archivedEditingType, ...activeTypes];
   }, [activeTypes, archivedEditingType]);
 
+  const groupedTypes = useMemo(() => {
+    const groups: Record<TransactionDirection, TransactionTypeDef[]> = {
+      OUTFLOW: [],
+      INFLOW: [],
+      NEUTRAL: [],
+    };
+    visibleTypes.forEach((def) => {
+      const key: TransactionDirection =
+        def.direction === "INFLOW" || def.direction === "OUTFLOW"
+          ? def.direction
+          : "NEUTRAL";
+      groups[key].push(def);
+    });
+    return groups;
+  }, [visibleTypes]);
+
+  const defaultTypeId = useMemo(
+    () =>
+      activeTypes.find((t) => t.direction === "OUTFLOW")?.id ??
+      activeTypes.find((t) => t.direction === "INFLOW")?.id ??
+      activeTypes[0]?.id ??
+      "EXPENSE",
+    [activeTypes],
+  );
+
   const [txType, setTxType] = useState<string>("EXPENSE");
   const [txMethod, setTxMethod] = useState<PaymentMethod>("BANK");
   const [txAmount, setTxAmount] = useState("");
   const [txDesc, setTxDesc] = useState("");
-
   const [txDate, setTxDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Seed the form when the modal opens.
+  const [person, setPerson] = useState<LoanPerson | null>(null);
+  // Toggles between the transaction form and the inline person picker.
+  const [personPickerOpen, setPersonPickerOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // ---------- Person picker state ----------
+  const [contacts, setContacts] = useState<ContactCard[]>([]);
+  const [contactsStatus, setContactsStatus] = useState<ContactsStatus>("idle");
+  const [contactSearch, setContactSearch] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+
+  const currentTypeDef = useMemo(
+    () => (project?.transactionTypes ?? []).find((t) => t.id === txType),
+    [project, txType],
+  );
+  const loanType = isLoanType(currentTypeDef);
+
+  // ---------- Contact loading (lazy, only when picker opens) ----------
+  const loadContacts = useCallback(async () => {
+    try {
+      setContactsStatus("loading");
+
+      let permission = await Contacts.getPermissionsAsync();
+      if (permission.status !== "granted") {
+        permission = await Contacts.requestPermissionsAsync();
+      }
+
+      if (permission.status !== "granted") {
+        setContacts([]);
+        setContactsStatus("denied");
+        return;
+      }
+
+      const result = await Contacts.getContactsAsync({
+        fields: [
+          Contacts.Fields.Name,
+          Contacts.Fields.FirstName,
+          Contacts.Fields.LastName,
+          Contacts.Fields.PhoneNumbers,
+        ],
+        sort: Contacts.SortTypes.FirstName,
+        pageSize: 1000,
+        pageOffset: 0,
+      });
+
+      const formatted = result.data
+        .reduce<ContactCard[]>((acc, contact) => {
+          const firstName = contact.firstName?.trim() ?? "";
+          const lastName = contact.lastName?.trim() ?? "";
+          const name =
+            contact.name?.trim() || `${firstName} ${lastName}`.trim();
+          const phone = contact.phoneNumbers
+            ?.find((item) => item.number?.trim())
+            ?.number?.trim();
+
+          if (!name && !phone) return acc;
+
+          acc.push({
+            id: contact.id ?? `${name}-${phone ?? `${firstName}-${lastName}`}`,
+            name: name || phone || "Unknown contact",
+            phone,
+          });
+          return acc;
+        }, [])
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setContacts(formatted);
+      setContactsStatus("granted");
+    } catch (error) {
+      console.error("[Contacts] Loading failed:", error);
+      setContacts([]);
+      setContactsStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (personPickerOpen && contactsStatus === "idle") {
+      loadContacts();
+    }
+  }, [personPickerOpen, contactsStatus, loadContacts]);
+
+  // ---------- Reset / hydrate on open ----------
   useEffect(() => {
     if (!visible) return;
 
@@ -3959,15 +4171,20 @@ export default function AddTransactionBottomSheet({
       setTxAmount(formatNumberInput(transactionToEdit.amount.toString()));
       setTxDesc(transactionToEdit.description);
       setTxDate(new Date(transactionToEdit.date));
+      setPerson(transactionToEdit.person ?? null);
     } else {
       setTxAmount("");
       setTxDesc("");
       setTxDate(new Date());
-      // Use the first active type; fall back to the legacy default if the
-      // user archived everything (shouldn't happen, but keeps us safe).
-      setTxType(activeTypes[0]?.id ?? "EXPENSE");
+      setTxType(defaultTypeId);
       setTxMethod("BANK");
+      setPerson(null);
     }
+    setErrorMessage(null);
+    setPersonPickerOpen(false);
+    setContactSearch("");
+    setManualName("");
+    setManualPhone("");
 
     const timeout = setTimeout(() => {
       amountInputRef.current?.focus();
@@ -3976,9 +4193,65 @@ export default function AddTransactionBottomSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, transactionToEdit]);
 
+  useEffect(() => {
+    if (!loanType) {
+      setPerson(null);
+      setPersonPickerOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loanType]);
+
+  // ---------- Filtered contact list ----------
+  const filteredContacts = useMemo(() => {
+    const q = contactSearch.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone ? c.phone.toLowerCase().includes(q) : false),
+    );
+  }, [contacts, contactSearch]);
+
+  const pickContact = (contact: ContactCard) => {
+    setPerson({
+      id: `c:${contact.id}`,
+      name: contact.name,
+      phone: contact.phone,
+    });
+    setPersonPickerOpen(false);
+    setContactSearch("");
+  };
+
+  const addManualPerson = () => {
+    const name = manualName.trim();
+    if (!name) return;
+    setPerson({
+      id: `m:${Date.now().toString(36)}`,
+      name,
+      phone: manualPhone.trim() || undefined,
+    });
+    setManualName("");
+    setManualPhone("");
+    setPersonPickerOpen(false);
+  };
+
   const handleSave = () => {
     const amountNum = parseFormattedNumber(txAmount);
-    if (!amountNum || isNaN(amountNum)) return;
+    if (!amountNum || isNaN(amountNum)) {
+      setErrorMessage("يرجى إدخال مبلغ صحيح.");
+      return;
+    }
+
+    if (loanType && !person && !txDesc.trim()) {
+      setErrorMessage("يرجى اختيار الشخص أو كتابة ملاحظة.");
+      return;
+    }
+
+    const fallbackDesc = loanType
+      ? ""
+      : txType === "TRANSFER"
+        ? "تحويل داخلي"
+        : "بدون وصف";
 
     const transactionData: Transaction = {
       id: transactionToEdit ? transactionToEdit.id : Date.now().toString(),
@@ -3986,9 +4259,9 @@ export default function AddTransactionBottomSheet({
       type: txType,
       method: txMethod,
       amount: amountNum,
-      description:
-        txDesc || (txType === "TRANSFER" ? "تحويل داخلي" : "بدون وصف"),
+      description: txDesc || fallbackDesc,
       date: txDate.toISOString(),
+      person: loanType && person ? person : undefined,
     };
 
     if (transactionToEdit) {
@@ -3997,177 +4270,444 @@ export default function AddTransactionBottomSheet({
       addTransaction(transactionData);
     }
 
-    // Reset local state
     setTxAmount("");
     setTxDesc("");
     setTxDate(new Date());
-    setTxType(activeTypes[0]?.id ?? "EXPENSE");
+    setTxType(defaultTypeId);
     setTxMethod("CASH");
+    setPerson(null);
     setShowDatePicker(false);
+    setErrorMessage(null);
+    setPersonPickerOpen(false);
     onClose();
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === "android") {
-      setShowDatePicker(false);
-    }
-    if (selectedDate) {
-      setTxDate(selectedDate);
-    }
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android") setShowDatePicker(false);
+    if (selectedDate) setTxDate(selectedDate);
   };
 
   const isTransfer = txType === "TRANSFER";
+  const hasAnyType = visibleTypes.length > 0;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={() => {
+        // Back button: from picker, return to form. From form, close.
+        if (personPickerOpen) setPersonPickerOpen(false);
+        else onClose();
+      }}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.modalOverlay}
       >
         <View style={styles.modalContent}>
-          <Text style={styles.modalHeader}>
-            {transactionToEdit ? "تعديل المعاملة" : "إضافة معاملة جديدة"}
-          </Text>
+          {/* Header: only shown in form mode — the picker renders its own. */}
+          {!personPickerOpen && (
+            <Text style={styles.modalHeader}>
+              {transactionToEdit ? "تعديل المعاملة" : "إضافة معاملة جديدة"}
+            </Text>
+          )}
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* ---------- TYPE PICKER (driven by project.transactionTypes) ---------- */}
-            <Text style={styles.modalLabel}>نوع المعاملة</Text>
-            <View style={styles.row}>
-              {visibleTypes.length === 0 && (
+          {/* ---------- FORM VIEW ---------- */}
+          {!personPickerOpen && (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {errorMessage && (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorBannerText}>{errorMessage}</Text>
+                </View>
+              )}
+
+              <Text style={styles.modalLabel}>نوع المعاملة</Text>
+
+              {!hasAnyType && (
                 <Text style={styles.emptyTypesText}>
                   لا توجد أنواع متاحة لهذا المشروع. أضف نوعاً من إعدادات
                   المشروع.
                 </Text>
               )}
-              {visibleTypes.map((def) => {
-                const isActive = txType === def.id;
+
+              {GROUP_ORDER.map((group) => {
+                const items = groupedTypes[group];
+                if (items.length === 0) return null;
+                const meta = GROUP_META[group];
+
                 return (
+                  <View key={group} style={styles.groupContainer}>
+                    <View style={styles.groupHeader}>
+                      <View
+                        style={[
+                          styles.groupAccentBar,
+                          { backgroundColor: meta.accent },
+                        ]}
+                      />
+                      <Text style={styles.groupLabel}>{meta.label}</Text>
+                      <Text style={styles.groupHint}>{meta.hint}</Text>
+                    </View>
+
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chipRowContent}
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {items.map((def) => {
+                        const isActive = txType === def.id;
+                        const isTransferType = def.id === "TRANSFER";
+                        const isLoan = isLoanType(def);
+                        return (
+                          <TouchableOpacity
+                            key={def.id}
+                            style={[
+                              styles.chip,
+                              isActive && {
+                                backgroundColor: `${def.color}22`,
+                                borderColor: def.color,
+                                borderWidth: 1.5,
+                              },
+                            ]}
+                            onPress={() => setTxType(def.id)}
+                            activeOpacity={0.7}
+                          >
+                            <View
+                              style={[
+                                styles.chipDot,
+                                { backgroundColor: def.color },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                styles.chipText,
+                                isActive && {
+                                  color: def.color,
+                                  fontWeight: "bold",
+                                },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {isLoan ? "👤 " : isTransferType ? "↔ " : ""}
+                              {def.label}
+                              {def.archived ? "  (مؤرشف)" : ""}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                );
+              })}
+
+              <Text style={styles.modalLabel}>
+                {isTransfer ? "تحويل إلى" : "طريقة الدفع"}
+              </Text>
+              <View style={styles.row}>
+                {(["CASH", "BANK"] as PaymentMethod[]).map((method) => (
                   <TouchableOpacity
-                    key={def.id}
+                    key={method}
                     style={[
                       styles.chip,
-                      isActive && {
-                        backgroundColor: `${def.color}22`, // ~13% tint
-                        borderColor: def.color,
-                      },
-                      isActive && styles.chipActiveOutline,
+                      txMethod === method && styles.chipActive,
                     ]}
-                    onPress={() => setTxType(def.id)}
+                    onPress={() => setTxMethod(method)}
                   >
                     <Text
                       style={[
                         styles.chipText,
-                        isActive && { color: def.color, fontWeight: "bold" },
+                        txMethod === method && styles.chipTextActive,
                       ]}
                     >
-                      {def.label}
-                      {def.archived ? "  (مؤرشف)" : ""}
+                      {method === "CASH"
+                        ? isTransfer
+                          ? "الصندوق (سحب من البنك)"
+                          : "نقدي"
+                        : isTransfer
+                          ? "البنك (إيداع نقدي)"
+                          : "بنكي"}
                     </Text>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* ---------- METHOD PICKER ---------- */}
-            <Text style={styles.modalLabel}>
-              {isTransfer ? "تحويل إلى" : "طريقة الدفع"}
-            </Text>
-            <View style={styles.row}>
-              {(["CASH", "BANK"] as PaymentMethod[]).map((method) => (
-                <TouchableOpacity
-                  key={method}
-                  style={[
-                    styles.chip,
-                    txMethod === method && styles.chipActive,
-                  ]}
-                  onPress={() => setTxMethod(method)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      txMethod === method && styles.chipTextActive,
-                    ]}
-                  >
-                    {method === "CASH"
-                      ? isTransfer
-                        ? "الصندوق (سحب من البنك)"
-                        : "نقدي"
-                      : isTransfer
-                        ? "البنك (إيداع نقدي)"
-                        : "بنكي"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* ---------- AMOUNT ---------- */}
-            <TextInput
-              ref={amountInputRef}
-              style={styles.input}
-              placeholder="المبلغ"
-              keyboardType="numeric"
-              value={txAmount}
-              onChangeText={(text) => setTxAmount(formatNumberInput(text))}
-              textAlign="right"
-            />
-
-            {/* ---------- DESCRIPTION ---------- */}
-            <TextInput
-              style={styles.input}
-              placeholder="الوصف (مواد، مورد، الخ)"
-              value={txDesc}
-              onChangeText={setTxDesc}
-              textAlign="right"
-            />
-
-            {/* ---------- DATE ---------- */}
-            <TouchableOpacity
-              style={styles.dateInput}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.dateText}>
-                {txDate.toISOString().split("T")[0]}
-              </Text>
-            </TouchableOpacity>
-
-            {showDatePicker && (
-              <View style={styles.datePickerContainer}>
-                <DateTimePicker
-                  value={txDate}
-                  mode="date"
-                  display="default"
-                  onValueChange={handleDateChange}
-                />
-                {Platform.OS === "ios" && (
-                  <TouchableOpacity
-                    style={styles.doneButton}
-                    onPress={() => setShowDatePicker(false)}
-                  >
-                    <Text style={styles.doneButtonText}>تم</Text>
-                  </TouchableOpacity>
-                )}
+                ))}
               </View>
-            )}
 
-            {/* ---------- ACTIONS ---------- */}
-            <View style={[styles.row, { marginTop: 16 }]}>
+              <TextInput
+                ref={amountInputRef}
+                style={styles.input}
+                placeholder="المبلغ"
+                keyboardType="numeric"
+                value={txAmount}
+                onChangeText={(text) => setTxAmount(formatNumberInput(text))}
+                textAlign="right"
+              />
+
+              {/* ---------- INLINE PERSON SECTION (loans only) ---------- */}
+              {loanType && (
+                <>
+                  <Text style={styles.modalLabel}>
+                    {currentTypeDef?.countsAsLoanReceived
+                      ? "الشخص المُقرض منه"
+                      : "الشخص المُقرض له"}
+                  </Text>
+
+                  {person ? (
+                    <View style={styles.personCard}>
+                      <View style={styles.personAvatar}>
+                        <Text style={styles.personAvatarText}>
+                          {person.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.personInfo}>
+                        <Text style={styles.personName} numberOfLines={1}>
+                          {person.name}
+                        </Text>
+                        {person.phone ? (
+                          <Text style={styles.personPhone} numberOfLines={1}>
+                            {person.phone}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.personChangeBtn}
+                        onPress={() => setPersonPickerOpen(true)}
+                      >
+                        <Text style={styles.personChangeText}>تغيير</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.personClearBtn}
+                        onPress={() => setPerson(null)}
+                      >
+                        <MaterialIcons name="close" size={18} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.personPickBtn}
+                      onPress={() => setPersonPickerOpen(true)}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons
+                        name="person-add"
+                        size={22}
+                        color="#0F172A"
+                      />
+                      <Text style={styles.personPickText}>
+                        اختر الشخص من جهات الاتصال
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+
+              <TextInput
+                style={styles.input}
+                placeholder={
+                  loanType
+                    ? "ملاحظات إضافية (اختياري)"
+                    : "الوصف (مواد، مورد، الخ)"
+                }
+                value={txDesc}
+                onChangeText={setTxDesc}
+                textAlign="right"
+              />
+
               <TouchableOpacity
-                style={[styles.modalBtn, styles.saveBtn]}
-                onPress={handleSave}
+                style={styles.dateInput}
+                onPress={() => setShowDatePicker(true)}
               >
-                <Text style={styles.saveBtnText}>حفظ</Text>
+                <Text style={styles.dateText}>
+                  {txDate.toISOString().split("T")[0]}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.cancelBtn]}
-                onPress={onClose}
-              >
-                <Text style={styles.cancelBtnText}>إلغاء</Text>
-              </TouchableOpacity>
+
+              {showDatePicker && (
+                <View style={styles.datePickerContainer}>
+                  <DateTimePicker
+                    value={txDate}
+                    mode="date"
+                    display="default"
+                    onValueChange={handleDateChange}
+                  />
+                  {Platform.OS === "ios" && (
+                    <TouchableOpacity
+                      style={styles.doneButton}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.doneButtonText}>تم</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              <View style={[styles.row, { marginTop: 16 }]}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.saveBtn]}
+                  onPress={handleSave}
+                >
+                  <Text style={styles.saveBtnText}>حفظ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.cancelBtn]}
+                  onPress={onClose}
+                >
+                  <Text style={styles.cancelBtnText}>إلغاء</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          )}
+
+          {/* ---------- PICKER VIEW (inline, replaces the form) ---------- */}
+          {personPickerOpen && (
+            <View style={styles.pickerContainer}>
+              {/* Picker header */}
+              <View style={styles.pickerHeader}>
+                <TouchableOpacity
+                  style={styles.pickerBackBtn}
+                  onPress={() => setPersonPickerOpen(false)}
+                >
+                  <MaterialIcons
+                    name="arrow-forward"
+                    size={22}
+                    color="#0F172A"
+                  />
+                </TouchableOpacity>
+                <Text style={styles.pickerTitle}>اختر الشخص</Text>
+                <View style={{ width: 36 }} />
+              </View>
+
+              {/* Search */}
+              <View style={styles.searchRow}>
+                <MaterialIcons name="search" size={20} color="#94A3B8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="ابحث بالاسم أو رقم الهاتف..."
+                  placeholderTextColor="#94A3B8"
+                  value={contactSearch}
+                  onChangeText={setContactSearch}
+                  textAlign="right"
+                />
+              </View>
+
+              {/* Manual entry (always visible; acts as fallback) */}
+              <View style={styles.manualRow}>
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    style={styles.manualInput}
+                    placeholder="اسم شخص جديد"
+                    placeholderTextColor="#94A3B8"
+                    value={manualName}
+                    onChangeText={setManualName}
+                    textAlign="right"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    style={styles.manualInput}
+                    placeholder="هاتف (اختياري)"
+                    placeholderTextColor="#94A3B8"
+                    value={manualPhone}
+                    onChangeText={setManualPhone}
+                    textAlign="right"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.manualAddBtn,
+                    !manualName.trim() && styles.manualAddBtnDisabled,
+                  ]}
+                  onPress={addManualPerson}
+                  disabled={!manualName.trim()}
+                >
+                  <MaterialIcons name="add" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Contacts list */}
+              {contactsStatus === "loading" && (
+                <View style={styles.pickerCenter}>
+                  <ActivityIndicator size="large" color="#111827" />
+                  <Text style={styles.pickerInfoText}>
+                    جارٍ تحميل جهات الاتصال...
+                  </Text>
+                </View>
+              )}
+
+              {(contactsStatus === "denied" || contactsStatus === "error") && (
+                <View style={styles.pickerCenter}>
+                  <MaterialIcons name="contacts" size={48} color="#9ca3af" />
+                  <Text style={styles.pickerInfoText}>
+                    لا يمكن الوصول إلى جهات الاتصال
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.pickerRetryBtn}
+                    onPress={loadContacts}
+                  >
+                    <Text style={styles.pickerRetryText}>إعادة المحاولة</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Linking.openSettings()}
+                    style={{ marginTop: 8 }}
+                  >
+                    <Text style={styles.pickerLinkText}>فتح الإعدادات</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {contactsStatus === "granted" && (
+                <FlatList
+                  data={filteredContacts}
+                  keyExtractor={(item) => item.id}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={{ paddingBottom: 16 }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.contactRow}
+                      onPress={() => pickContact(item)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.contactAvatar}>
+                        <Text style={styles.contactAvatarText}>
+                          {item.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.contactInfo}>
+                        <Text style={styles.contactName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        {item.phone ? (
+                          <Text style={styles.contactPhone} numberOfLines={1}>
+                            {item.phone}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <MaterialIcons
+                        name="chevron-left"
+                        size={22}
+                        color="#CBD5E1"
+                      />
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={
+                    <View style={styles.pickerCenter}>
+                      <MaterialIcons
+                        name="person-search"
+                        size={40}
+                        color="#9ca3af"
+                      />
+                      <Text style={styles.pickerInfoText}>
+                        لا توجد جهات اتصال مطابقة
+                      </Text>
+                    </View>
+                  }
+                />
+              )}
             </View>
-          </ScrollView>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -4186,6 +4726,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "90%",
+    minHeight: 420,
   },
   modalHeader: {
     fontSize: 20,
@@ -4211,25 +4752,139 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "right",
     flex: 1,
-  },
-  datePickerContainer: {
-    alignItems: "center",
     marginBottom: 12,
   },
+
+  errorBanner: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    color: "#DC2626",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  groupContainer: { marginBottom: 14 },
+  groupHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  groupAccentBar: { width: 4, height: 16, borderRadius: 2 },
+  groupLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    textAlign: "right",
+  },
+  groupHint: {
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "600",
+    textAlign: "right",
+  },
+  chipRowContent: {
+    flexDirection: "row-reverse",
+    gap: 8,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+  },
+
   chip: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 20,
     backgroundColor: "#f3f4f6",
     borderWidth: 1,
     borderColor: "#e5e7eb",
   },
-  // Kept from the original so the method picker still highlights.
+  chipDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 6 },
   chipActive: { backgroundColor: "#dbeafe", borderColor: "#3b82f6" },
-  // Additional outline used by the type picker when a colored type is active.
-  chipActiveOutline: { borderWidth: 1.5 },
   chipText: { color: "#4b5563", fontSize: 14 },
   chipTextActive: { color: "#1d4ed8", fontWeight: "bold" },
+
+  personCard: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  personAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#111827",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  personAvatarText: { color: "white", fontWeight: "700", fontSize: 16 },
+  personInfo: { flex: 1, alignItems: "flex-end" },
+  personName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#0F172A",
+    textAlign: "right",
+  },
+  personPhone: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 2,
+    textAlign: "right",
+    writingDirection: "ltr",
+  },
+  personChangeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#E2E8F0",
+  },
+  personChangeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  personClearBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+  },
+
+  personPickBtn: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    paddingVertical: 16,
+    backgroundColor: "#F8FAFC",
+    marginBottom: 12,
+  },
+  personPickText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+
   input: {
     borderWidth: 1,
     borderColor: "#d1d5db",
@@ -4248,11 +4903,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
     justifyContent: "center",
   },
-  dateText: {
-    textAlign: "right",
-    color: "#111827",
-    fontSize: 14,
-  },
+  dateText: { textAlign: "right", color: "#111827", fontSize: 14 },
+  datePickerContainer: { alignItems: "center", marginBottom: 12 },
   doneButton: {
     marginTop: 8,
     padding: 8,
@@ -4261,15 +4913,150 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     alignItems: "center",
   },
-  doneButtonText: {
-    color: "#1d4ed8",
-    fontWeight: "bold",
-  },
+  doneButtonText: { color: "#1d4ed8", fontWeight: "bold" },
   modalBtn: { flex: 1, padding: 14, borderRadius: 8, alignItems: "center" },
   cancelBtn: { backgroundColor: "#f3f4f6", marginRight: 8 },
   cancelBtnText: { color: "#374151", fontWeight: "600" },
   saveBtn: { backgroundColor: "#111827" },
   saveBtnText: { color: "white", fontWeight: "600" },
+
+  // ---------- Picker view ----------
+  pickerContainer: {
+    flex: 1,
+    minHeight: 420,
+  },
+  pickerHeader: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  pickerBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  searchRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#0F172A",
+    paddingVertical: 8,
+  },
+  manualRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  manualInput: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: "#0F172A",
+    backgroundColor: "#F8FAFC",
+  },
+  manualAddBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#0F172A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  manualAddBtnDisabled: {
+    backgroundColor: "#94A3B8",
+  },
+  pickerCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    gap: 8,
+  },
+  pickerInfoText: {
+    fontSize: 14,
+    color: "#6b7280",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  pickerRetryBtn: {
+    marginTop: 8,
+    backgroundColor: "#111827",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  pickerRetryText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  pickerLinkText: {
+    color: "#2563eb",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  contactRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E2E8F0",
+  },
+  contactAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#111827",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  contactAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  contactInfo: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  contactName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#0F172A",
+    textAlign: "right",
+  },
+  contactPhone: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 2,
+    textAlign: "right",
+    writingDirection: "ltr",
+  },
 });
 
 === ./src/components/animated-icon.module.css ===
@@ -4995,6 +5782,22 @@ interface Props {
 const generateId = () =>
   Date.now().toString() + Math.random().toString(36).substring(2, 6);
 
+/** Default invoice time when creating a new one: 3:00 PM local time. */
+const defaultInvoiceTime = (): Date => {
+  const d = new Date();
+  d.setHours(15, 0, 0, 0);
+  return d;
+};
+
+/** Format a Date to "h:mm AM/PM" for the picker button label. */
+const formatTimeLabel = (d: Date): string => {
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
 export default function InvoiceBottomSheet({
   visible,
   onClose,
@@ -5010,8 +5813,10 @@ export default function InvoiceBottomSheet({
   const [phoneNumber, setPhoneNumber] = useState(""); // store raw digits
   const [address, setAddress] = useState("");
   const [date, setDate] = useState(new Date());
+  const [time, setTime] = useState<Date>(defaultInvoiceTime());
   const [companyAddress, setCompanyAddress] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [paidAmount, setPaidAmount] = useState(0);
   const [paidAmountInput, setPaidAmountInput] = useState("");
@@ -5038,7 +5843,14 @@ export default function InvoiceBottomSheet({
         setCompanyPhone(invoiceToEdit.companyPhone || "");
         setPhoneNumber(stripPhoneFormatting(invoiceToEdit.phoneNumber || ""));
         setAddress(invoiceToEdit.address || "");
-        setDate(new Date(invoiceToEdit.date));
+
+        const existingDate = new Date(invoiceToEdit.date);
+        setDate(existingDate);
+        // Preserve the time that was saved on the invoice; if the stored
+        // date happens to be midnight (old data), fall back to 3 PM.
+        const hasTime =
+          existingDate.getHours() !== 0 || existingDate.getMinutes() !== 0;
+        setTime(hasTime ? existingDate : defaultInvoiceTime());
 
         const loadedItems = invoiceToEdit.items.map((item) => ({
           ...item,
@@ -5071,6 +5883,7 @@ export default function InvoiceBottomSheet({
         setPaidAmount(0);
         setPaidAmountInput("");
         setDate(new Date());
+        setTime(defaultInvoiceTime());
         const newItem = {
           id: generateId(),
           item: "",
@@ -5101,17 +5914,23 @@ export default function InvoiceBottomSheet({
 
     setErrorMessage(null);
     const rawPhone = phoneNumber.replace(/\D/g, ""); // still stored, but can be empty
+
+    // Compose date + time into a single ISO string so the whole app
+    // (preview, PDF, list) sees the same timestamp without schema changes.
+    const combined = new Date(date);
+    combined.setHours(time.getHours(), time.getMinutes(), 0, 0);
+
     const invoiceData: Invoice = {
       id: invoiceToEdit?.id || generateId(),
       type,
       companyName: companyName.trim(),
       companyLogo,
-      invoiceNumber: invoiceNumber.trim(), // NEW
-      paidAmount: paidAmount || 0, // NEW
+      invoiceNumber: invoiceNumber.trim(),
+      paidAmount: paidAmount || 0,
       customerName: customerName.trim(),
-      phoneNumber: rawPhone, // store only digits, may be empty
+      phoneNumber: rawPhone,
       address: address.trim(),
-      date: date.toISOString(),
+      date: combined.toISOString(),
       companyPhone: companyPhone.trim() || undefined,
       companyAddress: companyAddress.trim() || undefined,
       items: items.map((item) => ({
@@ -5206,6 +6025,11 @@ export default function InvoiceBottomSheet({
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === "android") setShowDatePicker(false);
     if (selectedDate) setDate(selectedDate);
+  };
+
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    if (Platform.OS === "android") setShowTimePicker(false);
+    if (selectedTime) setTime(selectedTime);
   };
 
   const computeSubtotal = () => {
@@ -5444,6 +6268,8 @@ export default function InvoiceBottomSheet({
                 </Text>
               </View>
             )}
+
+            {/* ---------- DATE + TIME ---------- */}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>تاريخ الفاتورة</Text>
               <TouchableOpacity
@@ -5464,6 +6290,36 @@ export default function InvoiceBottomSheet({
                 display="default"
                 onChange={handleDateChange}
               />
+            )}
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>وقت الفاتورة</Text>
+              <TouchableOpacity
+                style={styles.dateInput}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={styles.dateIcon}>🕒</Text>
+                <Text style={styles.dateText}>{formatTimeLabel(time)}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={time}
+                mode="time"
+                is24Hour={false}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleTimeChange}
+              />
+            )}
+
+            {Platform.OS === "ios" && showTimePicker && (
+              <TouchableOpacity
+                style={styles.iosDoneBtn}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={styles.iosDoneBtnText}>تم</Text>
+              </TouchableOpacity>
             )}
 
             {/* Items Section */}
@@ -5637,7 +6493,6 @@ export default function InvoiceBottomSheet({
 }
 
 const styles = StyleSheet.create({
-  // ... (keep all your existing styles exactly as they were)
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
@@ -5822,6 +6677,18 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     fontSize: 14,
     fontWeight: "500",
+  },
+  iosDoneBtn: {
+    marginTop: 8,
+    marginBottom: 14,
+    backgroundColor: "#F1F5F9",
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  iosDoneBtnText: {
+    color: "#0F172A",
+    fontWeight: "700",
   },
   sectionHeaderRow: {
     flexDirection: "row-reverse",
@@ -6314,12 +7181,18 @@ export const exportPdf = async (
     console.error("Error exporting PDF:", error);
   }
 };
-
 export const generateFinancialReport = async (
   project: Project,
   transactions: Transaction[],
+  periodLabel: string = "تاريخ المشروع بالكامل",
+  size: "A4" | "MOBILE" = "A4",
 ) => {
-  const html = await getArFinancialReportHtml(project, transactions);
+  const html = await getArFinancialReportHtml(
+    project,
+    transactions,
+    periodLabel,
+    size,
+  );
 
   try {
     const { uri } = await Print.printToFileAsync({ html });
@@ -6372,11 +7245,15 @@ export const getArabicInvoiceHtml = (
   discountAmount: number,
   total: number,
 ) => {
-  const timeStr = new Date().toLocaleTimeString("en-US", {
-    hour12: true,
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  // Use the invoice's actual date + time. Falls back to a friendly string
+  // if the date is somehow missing (shouldn't happen with the store).
+  const timeStr = invoice.date
+    ? new Date(invoice.date).toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "-";
 
   // Build rows directly from invoice.items
   const itemsRows = invoice.items
@@ -6680,7 +7557,7 @@ export const getArabicInvoiceHtml = (
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">الوقت</div>
-                <div class="meta-value">10:00 AM</div>
+                <div class="meta-value">${timeStr}</div>
               
                 <div class="od-label">مبلغ مدفوع مسبقاً:</div>
                 <div class="od-value">${(invoice.paidAmount || 0) > 0 ? formatMoney(invoice.paidAmount) : "لا يوجد"}</div>
@@ -6827,11 +7704,15 @@ export const getEnglishInvoiceHtml = (
   discountAmount: number,
   total: number,
 ) => {
-  const timeStr = new Date().toLocaleTimeString("en-US", {
-    hour12: true,
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  // Use the invoice's actual date + time. Falls back to a friendly string
+  // if the date is somehow missing (shouldn't happen with the store).
+  const timeStr = invoice.date
+    ? new Date(invoice.date).toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "-";
 
   // Build rows directly from invoice.items
   const itemsRows = invoice.items
@@ -7142,7 +8023,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">Time</div>
-                <div class="meta-value">03:00 PM</div>
+                <div class="meta-value">${timeStr}</div>
 
                <div class="meta-label">Paid Amount</div>
                <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>
@@ -7265,7 +8146,7 @@ ${
 // FINANCIAL REPORT
 // ------------------------------------------------------------------
 
-import { Project, Transaction } from "@/types";
+import { LoanPerson, Project, Transaction } from "@/types";
 import { formatCurrency } from "@/utils/format";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
@@ -7300,6 +8181,84 @@ async function getAssetBase64(asset: Asset): Promise<string> {
   }
 }
 
+const escapeHtml = (value: string | undefined | null) => {
+  if (!value) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+// ------------------------------------------------------------------
+// Loan aggregation
+// ------------------------------------------------------------------
+
+type LoanRow = {
+  key: string;
+  name: string;
+  phone?: string;
+  given: number;
+  received: number;
+};
+
+function aggregateLoans(
+  project: Project,
+  projectTransactions: Transaction[],
+): { rows: LoanRow[]; totalGiven: number; totalReceived: number } {
+  const byKey = new Map<string, LoanRow>();
+
+  const getPersonKey = (person: LoanPerson | undefined): string | null => {
+    if (!person) return null;
+    const trimmedName = person.name?.trim();
+    if (person.id) return person.id;
+    if (!trimmedName) return null;
+    return `name:${trimmedName.toLowerCase()}`;
+  };
+
+  projectTransactions.forEach((t) => {
+    const def = project.transactionTypes.find((d) => d.id === t.type);
+    if (!def) return;
+
+    const isGiven = !!def.countsAsLoanGiven;
+    const isReceived = !!def.countsAsLoanReceived;
+    if (!isGiven && !isReceived) return;
+
+    const personKey = getPersonKey(t.person);
+    if (!personKey) return;
+
+    const existing = byKey.get(personKey) ?? {
+      key: personKey,
+      name: t.person?.name?.trim() || "بدون اسم",
+      phone: t.person?.phone,
+      given: 0,
+      received: 0,
+    };
+
+    if (isGiven) existing.given += t.amount;
+    if (isReceived) existing.received += t.amount;
+
+    if (t.person?.phone) existing.phone = t.person.phone;
+    if (t.person?.name?.trim()) existing.name = t.person.name.trim();
+
+    byKey.set(personKey, existing);
+  });
+
+  const rows = Array.from(byKey.values()).sort(
+    (a, b) => b.given + b.received - (a.given + a.received),
+  );
+
+  const totalGiven = rows.reduce((sum, r) => sum + r.given, 0);
+  const totalReceived = rows.reduce((sum, r) => sum + r.received, 0);
+
+  return { rows, totalGiven, totalReceived };
+}
+
+// ------------------------------------------------------------------
+// Report HTML
+// ------------------------------------------------------------------
+
 export const getArFinancialReportHtml = async (
   project: Project,
   transactions: Transaction[],
@@ -7322,7 +8281,6 @@ export const getArFinancialReportHtml = async (
     .filter((t) => t.projectId === project.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // -------- Type definition resolvers (drive everything from `project`) --------
   const findDef = (typeId: string) =>
     project.transactionTypes.find((d) => d.id === typeId);
 
@@ -7333,7 +8291,6 @@ export const getArFinancialReportHtml = async (
   const isInflowType = (typeId: string) =>
     findDef(typeId)?.direction === "INFLOW";
 
-  // -------- Category totals: seeded from project types, plus legacy ids --------
   const categoryTotals: Record<string, number> = {};
   project.transactionTypes.forEach((t) => {
     categoryTotals[t.id] = 0;
@@ -7345,7 +8302,6 @@ export const getArFinancialReportHtml = async (
     categoryTotals[t.type] += t.amount;
   });
 
-  // -------- Totals: direction-driven, TRANSFER excluded from both --------
   let totalIncome = 0;
   let totalExpenses = 0;
   projectTransactions.forEach((t) => {
@@ -7356,13 +8312,39 @@ export const getArFinancialReportHtml = async (
     else if (def.direction === "OUTFLOW") totalExpenses += t.amount;
   });
 
+  const {
+    rows: loanRows,
+    totalGiven,
+    totalReceived,
+  } = aggregateLoans(project, projectTransactions);
+
+  const totalNet = totalReceived - totalGiven;
+
+  const loansRowsHtml = loanRows
+    .map((r) => {
+      const balance = r.received - r.given;
+      const balanceClass = balance >= 0 ? "loan-amount-in" : "loan-amount-out";
+      const balanceSign = balance >= 0 ? "+" : "-";
+      return `
+        <tr>
+          <td class="loans-col-name">${escapeHtml(r.name)}</td>
+          <td class="loans-col-phone">${escapeHtml(r.phone ?? "-")}</td>
+          <td class="loans-col-num loan-received">${formatCurrency(r.received)}</td>
+          <td class="loans-col-num loan-given">${formatCurrency(r.given)}</td>
+          <td class="loans-col-num ${balanceClass}">
+            ${balanceSign}${formatCurrency(Math.abs(balance))}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
   const todayDate = new Date().toLocaleDateString("ar-EG", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  // -------- Category table rows (skip zero-amount rows) --------
   const categoryRows = Object.entries(categoryTotals)
     .filter(([, amount]) => amount !== 0)
     .map(
@@ -7381,11 +8363,10 @@ export const getArFinancialReportHtml = async (
     )
     .join("");
 
-  // -------- Size-specific @page rules --------
   const pageRules = isMobile
     ? `
         @page {
-          size: 340pt 600pt; /* tall phone-card page, not A4 */
+          size: 340pt 600pt;
           margin: 8mm;
         }
       `
@@ -7402,12 +8383,11 @@ export const getArFinancialReportHtml = async (
         }
       `;
 
-  // -------- Size-specific font + layout overrides --------
+  // ---- Mobile size overrides ----
   const sizeOverrides = isMobile
     ? `
         body { font-size: 13px; }
 
-        /* Header: tighten whitespace on narrow page */
         .header-container {
           padding-bottom: 10px;
           margin-bottom: 10px;
@@ -7417,7 +8397,6 @@ export const getArFinancialReportHtml = async (
         .header-meta span { padding: 3px 8px; }
         .logo { width: 70px; height: 70px; border-radius: 8px; margin-left: 6px; }
 
-        /* Both summary cards: tighter padding + no forced page break */
         .summary-card {
           padding: 12px;
           border-radius: 10px;
@@ -7430,18 +8409,29 @@ export const getArFinancialReportHtml = async (
           margin-bottom: 10px;
         }
 
-        /* Balance cards stack to 1 column on phone width */
-        .balance-grid { grid-template-columns: 1fr; gap: 8px; }
-        .balance-card { padding: 10px; }
-        .balance-label { font-size: 12px; margin-bottom: 4px; }
+        /* Stack the balance cards and loan total cards vertically */
+        .balance-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 8px;
+        }
+        .loans-totals-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 8px;
+        }
+        .balance-card, .loans-total-card { padding: 10px; }
+        .balance-label, .loans-total-label { font-size: 12px; margin-bottom: 4px; }
         .balance-value { font-size: 19px; }
+        .loans-total-value { font-size: 17px; }
 
         .category-summary td, .category-summary th { padding: 6px; font-size: 11px; }
 
+        .loans-table td, .loans-table th { padding: 5px 6px; font-size: 10.5px; }
+        .loans-table th:nth-child(2),
+        .loans-table td:nth-child(2) { display: none; }
+        .loans-col-num { font-size: 10.5px !important; }
+
         h2 { font-size: 15px; margin-bottom: 10px; }
 
-        /* Transaction table: widen the date column so Arabic dates fit
-           on one line, and let the description wrap when needed. */
         table.transactions th, table.transactions td {
           padding: 6px;
           font-size: 10.5px;
@@ -7472,7 +8462,23 @@ export const getArFinancialReportHtml = async (
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
+          /* ---- Global box-sizing reset ----
+             Without this, .summary-card's padding + the inner grid's
+             100% width can sum to more than the page width, which
+             pushes the last card past the right edge and forces a
+             horizontal scrollbar in the WebView. */
+          *, *::before, *::after { box-sizing: border-box; }
+
           ${pageRules}
+
+          html, body {
+            /* Hard-stop any accidental horizontal overflow. The layout
+               below is designed to fit; anything that would leak past
+               100% is clipped instead of causing a scrollbar. */
+            overflow-x: hidden;
+            max-width: 100%;
+          }
+
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
             margin: 0; 
@@ -7490,12 +8496,17 @@ export const getArFinancialReportHtml = async (
             border-bottom: 3px solid #1e293b;
             padding-bottom: 20px;
             margin-bottom: 25px;
+            max-width: 100%;
           }
-          .header-info { text-align: left; }
+          .header-info {
+            text-align: left;
+            min-width: 0; /* allow the h1 / meta to shrink on narrow widths */
+          }
           .header-info h1 {
             margin: 0 0 10px 0;
             color: #0f172a;
             font-size: 26px;
+            overflow-wrap: anywhere;
           }
           .header-meta {
             display: flex;
@@ -7503,6 +8514,7 @@ export const getArFinancialReportHtml = async (
             font-size: 13px;
             color: #64748b;
             flex-direction: row-reverse;
+            flex-wrap: wrap;
           }
           .header-meta span {
             background-color: #f8fafc;
@@ -7516,15 +8528,10 @@ export const getArFinancialReportHtml = async (
             border-radius: 12px;
             object-fit: contain;
             margin-left: 10px;
+            flex-shrink: 0;
           }
 
-          /* ---------------- SHARED SUMMARY CARD ----------------
-             Used by BOTH containers. Keeping the visual identical,
-             but they live as separate DOM nodes so the renderer can
-             break pages between them independently. This is what
-             fixes the "big empty space" when the category list is
-             long: the balance card no longer has to jump to page 2
-             with it, and the category card can break on its own. */
+          /* ---------------- SHARED SUMMARY CARD ---------------- */
           .summary-card {
             background: linear-gradient(145deg, #ffffff, #f8fafc);
             padding: 20px;
@@ -7533,6 +8540,11 @@ export const getArFinancialReportHtml = async (
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             page-break-inside: avoid;
+            /* Keep the card from growing past the page even if a child
+               accidentally overflows — clip it instead of pushing the
+               whole page wide. */
+            max-width: 100%;
+            overflow: hidden;
           }
           .summary-title {
             font-size: 18px;
@@ -7542,13 +8554,15 @@ export const getArFinancialReportHtml = async (
             margin-bottom: 15px;
             border-bottom: 1px solid #e2e8f0;
             padding-bottom: 12px;
+            overflow-wrap: anywhere;
           }
 
-          /* Balance grid inside the first summary-card */
+       
           .balance-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 20px;
+            max-width: 100%;
           }
           .balance-card {
             background-color: #ffffff;
@@ -7556,6 +8570,8 @@ export const getArFinancialReportHtml = async (
             border-radius: 8px;
             border: 1px solid #e2e8f0;
             text-align: center;
+            min-width: 0;
+            overflow-wrap: anywhere;
           }
           .balance-label {
             display: block;
@@ -7563,14 +8579,121 @@ export const getArFinancialReportHtml = async (
             color: #64748b;
             margin-bottom: 8px;
           }
-          .balance-value { font-size: 24px; font-weight: bold; }
+          .balance-value {
+            font-size: 24px;
+            font-weight: bold;
+            display: block;
+            overflow-wrap: anywhere;
+          }
           .cash { color: #059669; }
           .bank { color: #2563eb; }
 
-          /* Category table inside the second summary-card */
+
+          .loans-totals-grid {
+            display: grid;
+            grid-template-columns:
+              minmax(0, 1fr)
+              minmax(0, 1fr)
+              minmax(0, 1fr);
+            gap: 12px;
+            margin-bottom: 14px;
+            max-width: 100%;
+          }
+          .loans-total-card {
+            background-color: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            min-width: 0;
+            overflow-wrap: anywhere;
+          }
+          .loans-total-label {
+            display: block;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            overflow-wrap: anywhere;
+          }
+          .loans-total-value {
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+            overflow-wrap: anywhere;
+          }
+          .loans-total-value.given { color: #ef4444; }
+          .loans-total-value.received { color: #10b981; }
+          .loans-total-value.net-positive { color: #8B5CF6; }
+          .loans-total-value.net-negative { color: #dc2626; }
+
+          /* ---------- Loans table ---------- */
+          .loans-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            max-width: 100%;
+          }
+          .loans-table th {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            color: #334155;
+            font-size: 12px;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            overflow-wrap: anywhere;
+          }
+          .loans-table td {
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 12px;
+            line-height: 1.35;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+          }
+
+          .loans-col-name {
+            text-align: right;
+            width: 30%;
+          }
+          .loans-col-phone {
+            text-align: right;
+            direction: ltr;
+            color: #475569;
+            width: 22%;
+            font-size: 11px;
+          }
+          .loans-col-num {
+            text-align: left;
+            width: 16%;
+            font-size: 12px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            display: table-cell;
+          }
+          .loan-received { color: #10b981; }
+          .loan-given    { color: #ef4444; }
+
+          .loans-col-num.loan-amount-in,
+          .loans-col-num.loan-amount-out {
+            font-size: 12px;
+            font-weight: 700;
+          }
+          .loan-amount-in  { color: #8B5CF6; }
+          .loan-amount-out { color: #dc2626; }
+
+          .loans-empty {
+            text-align: center;
+            color: #94a3b8;
+            font-style: italic;
+            padding: 10px;
+          }
+
+          /* ---------------- CATEGORY SUMMARY ---------------- */
           .category-summary table {
             width: 100%;
             border-collapse: collapse;
+            max-width: 100%;
           }
           .category-summary th {
             background-color: #f1f5f9;
@@ -7580,6 +8703,7 @@ export const getArFinancialReportHtml = async (
           .category-summary td, .category-summary th {
             padding: 8px;
             border: 1px solid #cbd5e1;
+            overflow-wrap: anywhere;
           }
           .category-summary .total-row {
             background-color: #f8fafc;
@@ -7591,9 +8715,24 @@ export const getArFinancialReportHtml = async (
 
           /* ---------------- TRANSACTIONS ---------------- */
           h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
-          table.transactions { width: 100%; border-collapse: collapse; table-layout: fixed; }
-          table.transactions th, table.transactions td { border: 1px solid #cbd5e1; padding: 12px; text-align: right; word-wrap: break-word; overflow: hidden; }
-          table.transactions th { background-color: #f1f5f9; font-weight: bold; color: #334155;}
+          table.transactions {
+            width: 100%;
+            max-width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+          table.transactions th, table.transactions td {
+            border: 1px solid #cbd5e1;
+            padding: 12px;
+            text-align: right;
+            word-wrap: break-word;
+            overflow: hidden;
+          }
+          table.transactions th {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            color: #334155;
+          }
           table.transactions th:nth-child(1), table.transactions td:nth-child(1) { width: 13%; }
           table.transactions th:nth-child(2), table.transactions td:nth-child(2) { width: 20%; }
           table.transactions th:nth-child(3), table.transactions td:nth-child(3) { width: 8%; }
@@ -7606,14 +8745,13 @@ export const getArFinancialReportHtml = async (
           .type-payroll  { background-color: #fdf5e6; }
           .type-transfer { background-color: #f0f8ff; }
 
-          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 500; }
-          .amount-in { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 500;}
+          .amount-out { color: #ef4444; direction: ltr; display: block; text-align: left; font-weight: 600; }
+          .amount-in  { color: #10b981; direction: ltr; display: block; text-align: left; font-weight: 600; }
 
           .transactions-section {
             page-break-before: always;
           }
 
-          /* ---- Mobile-specific overrides ---- */
           ${sizeOverrides}
         </style>
       </head>
@@ -7621,9 +8759,9 @@ export const getArFinancialReportHtml = async (
         <div class="header-container">
           <img src="${logoUri}" class="logo" alt="App Logo" />
           <div class="header-info">
-            <h1>التقرير المالي: ${project.name}</h1>
+            <h1>التقرير المالي: ${escapeHtml(project.name)}</h1>
             <div class="header-meta">
-              <span><strong>الفترة:</strong> ${periodLabel}</span>
+              <span><strong>الفترة:</strong> ${escapeHtml(periodLabel)}</span>
               <span><strong>تاريخ الإصدار:</strong> ${todayDate}</span>
             </div>
           </div>
@@ -7644,7 +8782,52 @@ export const getArFinancialReportHtml = async (
           </div>
         </div>
 
-        <!-- ========== CONTAINER 2: CATEGORY SUMMARY ========== -->
+        <!-- ========== CONTAINER 2: LOANS ========== -->
+        <div class="summary-card loans-summary">
+          <h2 class="summary-title">ملخص القروض</h2>
+
+          <div class="loans-totals-grid">
+            <div class="loans-total-card">
+              <span class="loans-total-label">إجمالي القروض المُعطاة</span>
+              <span class="loans-total-value given">${formatCurrency(totalGiven)}</span>
+            </div>
+            <div class="loans-total-card">
+              <span class="loans-total-label">إجمالي القروض المأخوذة</span>
+              <span class="loans-total-value received">${formatCurrency(totalReceived)}</span>
+            </div>
+            <div class="loans-total-card">
+              <span class="loans-total-label">صافي القروض</span>
+              <span class="loans-total-value ${
+                totalNet >= 0 ? "net-positive" : "net-negative"
+              }">
+                ${totalNet >= 0 ? "+" : "-"}${formatCurrency(Math.abs(totalNet))}
+              </span>
+            </div>
+          </div>
+
+          ${
+            loanRows.length > 0
+              ? `
+            <table class="loans-table">
+              <thead>
+                <tr>
+                  <th class="loans-col-name">الشخص</th>
+                  <th class="loans-col-phone">الهاتف</th>
+                  <th class="loans-col-num" style="text-align:left;">مأخوذ منه</th>
+                  <th class="loans-col-num" style="text-align:left;">مُعطى له</th>
+                  <th class="loans-col-num" style="text-align:left;">الرصيد</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${loansRowsHtml}
+              </tbody>
+            </table>
+          `
+              : `<div class="loans-empty">لا توجد قروض مرتبطة بأشخاص في هذه الفترة</div>`
+          }
+        </div>
+
+        <!-- ========== CONTAINER 3: CATEGORY SUMMARY ========== -->
         <div class="summary-card category-summary">
           <h2 class="summary-title">ملخص المعاملات حسب الفئة</h2>
           <table>
@@ -7684,9 +8867,17 @@ export const getArFinancialReportHtml = async (
                 (t) => `
               <tr class="type-${t.type.toLowerCase()}">
                 <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
-                <td>${getTypeLabel(t.type)}</td>
+                <td>${escapeHtml(getTypeLabel(t.type))}${
+                  t.person
+                    ? ` — ${escapeHtml(t.person.name)}${
+                        t.person.phone ? ` (${escapeHtml(t.person.phone)})` : ""
+                      }`
+                    : ""
+                }</td>
                 <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
-                <td>${t.description} ${t.vendorId ? `(${t.vendorId})` : ""}</td>
+                <td>${escapeHtml(t.description)} ${
+                  t.vendorId ? `(${escapeHtml(t.vendorId)})` : ""
+                }</td>
                 <td>
                   <span class="${isInflowType(t.type) ? "amount-in" : "amount-out"}">
                     ${isInflowType(t.type) ? "+" : "-"}${formatCurrency(t.amount)}
@@ -8165,6 +9356,12 @@ export interface TransactionTypeDef {
   countsAsLoanReceived?: boolean;
 }
 
+export interface LoanPerson {
+  id: string; // e.g. "c:1234" or "m:1712345678"
+  name: string;
+  phone?: string;
+  DisplayName?: string;
+}
 /** The seed list a new project starts with. Mirrors today's union. */
 export const DEFAULT_TRANSACTION_TYPES: TransactionTypeDef[] = [
   {
@@ -8283,13 +9480,16 @@ export interface Project {
 export interface Transaction {
   id: string;
   projectId: string;
-  type: string; // CHANGED: was TransactionType union
+  type: string;
   method: PaymentMethod;
   amount: number;
   description: string;
   date: string;
   employeeId?: string;
   vendorId?: string;
+  /** Present only when this transaction is a loan (LOAN_RECEIVED / LOAN_GIVEN
+   *  or any custom type with countsAsLoanGiven/Received). */
+  person?: LoanPerson;
 }
 
 // NEW: invoice type

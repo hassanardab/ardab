@@ -177,12 +177,18 @@ export const exportPdf = async (
     console.error("Error exporting PDF:", error);
   }
 };
-
 export const generateFinancialReport = async (
   project: Project,
   transactions: Transaction[],
+  periodLabel: string = "تاريخ المشروع بالكامل",
+  size: "A4" | "MOBILE" = "A4",
 ) => {
-  const html = await getArFinancialReportHtml(project, transactions);
+  const html = await getArFinancialReportHtml(
+    project,
+    transactions,
+    periodLabel,
+    size,
+  );
 
   try {
     const { uri } = await Print.printToFileAsync({ html });

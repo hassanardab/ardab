@@ -19,11 +19,15 @@ export const getEnglishInvoiceHtml = (
   discountAmount: number,
   total: number,
 ) => {
-  const timeStr = new Date().toLocaleTimeString("en-US", {
-    hour12: true,
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  // Use the invoice's actual date + time. Falls back to a friendly string
+  // if the date is somehow missing (shouldn't happen with the store).
+  const timeStr = invoice.date
+    ? new Date(invoice.date).toLocaleTimeString("en-US", {
+        hour12: true,
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "-";
 
   // Build rows directly from invoice.items
   const itemsRows = invoice.items
@@ -334,7 +338,7 @@ export const getEnglishInvoiceHtml = (
                 <div class="meta-value">${dateStr}</div>
                 
                 <div class="meta-label">Time</div>
-                <div class="meta-value">03:00 PM</div>
+                <div class="meta-value">${timeStr}</div>
 
                <div class="meta-label">Paid Amount</div>
                <div class="meta-value">${formatMoney(invoice.paidAmount || 0)}</div>

@@ -34,6 +34,12 @@ export interface TransactionTypeDef {
   countsAsLoanReceived?: boolean;
 }
 
+export interface LoanPerson {
+  id: string; // e.g. "c:1234" or "m:1712345678"
+  name: string;
+  phone?: string;
+  DisplayName?: string;
+}
 /** The seed list a new project starts with. Mirrors today's union. */
 export const DEFAULT_TRANSACTION_TYPES: TransactionTypeDef[] = [
   {
@@ -152,13 +158,16 @@ export interface Project {
 export interface Transaction {
   id: string;
   projectId: string;
-  type: string; // CHANGED: was TransactionType union
+  type: string;
   method: PaymentMethod;
   amount: number;
   description: string;
   date: string;
   employeeId?: string;
   vendorId?: string;
+  /** Present only when this transaction is a loan (LOAN_RECEIVED / LOAN_GIVEN
+   *  or any custom type with countsAsLoanGiven/Received). */
+  person?: LoanPerson;
 }
 
 // NEW: invoice type

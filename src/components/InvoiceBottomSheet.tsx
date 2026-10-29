@@ -32,6 +32,22 @@ interface Props {
 const generateId = () =>
   Date.now().toString() + Math.random().toString(36).substring(2, 6);
 
+/** Default invoice time when creating a new one: 3:00 PM local time. */
+const defaultInvoiceTime = (): Date => {
+  const d = new Date();
+  d.setHours(15, 0, 0, 0);
+  return d;
+};
+
+/** Format a Date to "h:mm AM/PM" for the picker button label. */
+const formatTimeLabel = (d: Date): string => {
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
 export default function InvoiceBottomSheet({
   visible,
   onClose,
@@ -47,8 +63,10 @@ export default function InvoiceBottomSheet({
   const [phoneNumber, setPhoneNumber] = useState(""); // store raw digits
   const [address, setAddress] = useState("");
   const [date, setDate] = useState(new Date());
+  const [time, setTime] = useState<Date>(defaultInvoiceTime());
   const [companyAddress, setCompanyAddress] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [paidAmount, setPaidAmount] = useState(0);
   const [paidAmountInput, setPaidAmountInput] = useState("");
@@ -75,7 +93,14 @@ export default function InvoiceBottomSheet({
         setCompanyPhone(invoiceToEdit.companyPhone || "");
         setPhoneNumber(stripPhoneFormatting(invoiceToEdit.phoneNumber || ""));
         setAddress(invoiceToEdit.address || "");
-        setDate(new Date(invoiceToEdit.date));
+
+        const existingDate = new Date(invoiceToEdit.date);
+        setDate(existingDate);
+        // Preserve the time that was saved on the invoice; if the stored
+        // date happens to be midnight (old data), fall back to 3 PM.
+        const hasTime =
+          existingDate.getHours() !== 0 || existingDate.getMinutes() !== 0;
+        setTime(hasTime ? existingDate : defaultInvoiceTime());
 
         const loadedItems = invoiceToEdit.items.map((item) => ({
           ...item,
@@ -108,6 +133,7 @@ export default function InvoiceBottomSheet({
         setPaidAmount(0);
         setPaidAmountInput("");
         setDate(new Date());
+        setTime(defaultInvoiceTime());
         const newItem = {
           id: generateId(),
           item: "",
@@ -138,17 +164,23 @@ export default function InvoiceBottomSheet({
 
     setErrorMessage(null);
     const rawPhone = phoneNumber.replace(/\D/g, ""); // still stored, but can be empty
+
+    // Compose date + time into a single ISO string so the whole app
+    // (preview, PDF, list) sees the same timestamp without schema changes.
+    const combined = new Date(date);
+    combined.setHours(time.getHours(), time.getMinutes(), 0, 0);
+
     const invoiceData: Invoice = {
       id: invoiceToEdit?.id || generateId(),
       type,
       companyName: companyName.trim(),
       companyLogo,
-      invoiceNumber: invoiceNumber.trim(), // NEW
-      paidAmount: paidAmount || 0, // NEW
+      invoiceNumber: invoiceNumber.trim(),
+      paidAmount: paidAmount || 0,
       customerName: customerName.trim(),
-      phoneNumber: rawPhone, // store only digits, may be empty
+      phoneNumber: rawPhone,
       address: address.trim(),
-      date: date.toISOString(),
+      date: combined.toISOString(),
       companyPhone: companyPhone.trim() || undefined,
       companyAddress: companyAddress.trim() || undefined,
       items: items.map((item) => ({
@@ -243,6 +275,11 @@ export default function InvoiceBottomSheet({
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === "android") setShowDatePicker(false);
     if (selectedDate) setDate(selectedDate);
+  };
+
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    if (Platform.OS === "android") setShowTimePicker(false);
+    if (selectedTime) setTime(selectedTime);
   };
 
   const computeSubtotal = () => {
@@ -481,6 +518,8 @@ export default function InvoiceBottomSheet({
                 </Text>
               </View>
             )}
+
+            {/* ---------- DATE + TIME ---------- */}
             <View style={styles.inputGroup}>
               <Text style={styles.fieldLabel}>تاريخ الفاتورة</Text>
               <TouchableOpacity
@@ -501,6 +540,36 @@ export default function InvoiceBottomSheet({
                 display="default"
                 onChange={handleDateChange}
               />
+            )}
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>وقت الفاتورة</Text>
+              <TouchableOpacity
+                style={styles.dateInput}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={styles.dateIcon}>🕒</Text>
+                <Text style={styles.dateText}>{formatTimeLabel(time)}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={time}
+                mode="time"
+                is24Hour={false}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleTimeChange}
+              />
+            )}
+
+            {Platform.OS === "ios" && showTimePicker && (
+              <TouchableOpacity
+                style={styles.iosDoneBtn}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={styles.iosDoneBtnText}>تم</Text>
+              </TouchableOpacity>
             )}
 
             {/* Items Section */}
@@ -674,7 +743,6 @@ export default function InvoiceBottomSheet({
 }
 
 const styles = StyleSheet.create({
-  // ... (keep all your existing styles exactly as they were)
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
@@ -859,6 +927,18 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     fontSize: 14,
     fontWeight: "500",
+  },
+  iosDoneBtn: {
+    marginTop: 8,
+    marginBottom: 14,
+    backgroundColor: "#F1F5F9",
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  iosDoneBtnText: {
+    color: "#0F172A",
+    fontWeight: "700",
   },
   sectionHeaderRow: {
     flexDirection: "row-reverse",

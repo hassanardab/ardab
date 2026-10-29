@@ -10,6 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { exportPdf, PDF_PAGE_SIZES } from "../../../services/PdfService";
 import { useStore } from "../../../store/useStore";
@@ -25,10 +29,13 @@ export default function ReportPreviewScreen() {
   const [reportSize, setReportSize] = useState<ReportSize>("A4");
   const [isRegenerating, setIsRegenerating] = useState(false);
 
+  // ---- Reserve space for the absolutely-positioned tab bar ----
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56;
+  const BOTTOM_RESERVED = TAB_BAR_HEIGHT + insets.bottom;
+
   const project = projects.find((p) => p.id === id);
 
-  // Keep a stable, filtered transaction list so the HTML effect re-runs
-  // when either the filter or the size changes.
   const filteredTransactions = useMemo(() => {
     return transactions
       .filter((t) => t.projectId === id)
@@ -91,7 +98,7 @@ export default function ReportPreviewScreen() {
           project,
           filteredTransactions,
           periodLabel,
-          reportSize, // <-- new
+          reportSize,
         );
         if (!cancelled) setHtmlContent(html);
       } finally {
@@ -117,7 +124,7 @@ export default function ReportPreviewScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#111827" />
-        <Text style={{ marginTop: 12 }}>جاري تجهيز التقرير...</Text>
+        <Text style={{ marginTop: 12 }}>جارٍ تجهيز التقرير...</Text>
       </View>
     );
   }
@@ -128,16 +135,9 @@ export default function ReportPreviewScreen() {
     year: "numeric",
   });
 
-  // Filename now includes the size so A4 and Mobile exports don't collide.
   const sizeTag = reportSize === "A4" ? "A4" : "Mobile";
   const fileName = `التقرير المالي_${project.name}_${dateStr}_${sizeTag}.pdf`;
 
-  // WebView needs help rendering the smaller page nicely. On Android,
-  // scalesPageToFit makes the small 340pt page fit the phone width. On iOS,
-  // the viewport meta inside the HTML (user-scalable=no) does that already.
-  // We ALSO inject a <style> to force the whole page to fit the view width
-  // while preserving proportions, since the template's @page rules only
-  // affect print output, not the WebView itself.
   const injectedJS = `
     (function() {
       var meta = document.querySelector('meta[name="viewport"]');
@@ -160,7 +160,8 @@ export default function ReportPreviewScreen() {
           headerTitle: "التقرير",
         }}
       />
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        {" "}
         <WebView
           source={{ html: htmlContent }}
           style={styles.webview}
@@ -168,16 +169,15 @@ export default function ReportPreviewScreen() {
           scalesPageToFit={Platform.OS === "android" ? true : undefined}
           injectedJavaScript={injectedJS}
         />
-
         {isRegenerating && (
           <View style={styles.regenOverlay}>
             <ActivityIndicator size="small" color="#111827" />
-            <Text style={styles.regenText}>جاري التحديث…</Text>
+            <Text style={styles.regenText}>جارٍ التحديث…</Text>
           </View>
         )}
-
-        <View style={styles.footer}>
-          {/* Size toggle */}
+        {/* Footer is safe-area aware so the export button sits above
+            the absolutely-positioned tab bar. */}
+        <View style={[styles.footer, { paddingBottom: 16 + BOTTOM_RESERVED }]}>
           <View style={styles.sizeRow}>
             <Text style={styles.sizeLabel}>حجم الصفحة:</Text>
             <View style={styles.sizeToggle}>
@@ -216,7 +216,6 @@ export default function ReportPreviewScreen() {
             </View>
           </View>
 
-          {/* Export button — passes the correct page dimensions to expo-print */}
           <TouchableOpacity
             style={styles.exportBtn}
             onPress={() =>
@@ -229,13 +228,13 @@ export default function ReportPreviewScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  container: { flex: 1, padding: 5, backgroundColor: "#f3f4f6" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   webview: { flex: 1, backgroundColor: "transparent" },
 
@@ -258,7 +257,9 @@ const styles = StyleSheet.create({
   regenText: { fontSize: 12, color: "#374151", fontWeight: "600" },
 
   footer: {
-    padding: 16,
+    // top padding only — bottom is applied dynamically for the tab bar
+    paddingTop: 16,
+    paddingHorizontal: 16,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
@@ -288,17 +289,13 @@ const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: "center",
   },
-  sizeBtnActive: {
-    backgroundColor: "#111827",
-  },
+  sizeBtnActive: { backgroundColor: "#111827" },
   sizeBtnText: {
     fontSize: 13,
     fontWeight: "700",
     color: "#475569",
   },
-  sizeBtnTextActive: {
-    color: "#FFFFFF",
-  },
+  sizeBtnTextActive: { color: "#FFFFFF" },
 
   exportBtn: {
     backgroundColor: "#111827",
