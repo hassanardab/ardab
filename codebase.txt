@@ -303,7 +303,7 @@ adb reverse tcp:8081 tcp:8081
   "expo": {
     "name": "Ardab",
     "slug": "Ardab",
-    "version": "2.11",
+    "version": "2.12",
     "orientation": "portrait",
     "icon": "./assets/images/icon_white_background.png",
     "scheme": "ardab",
@@ -2834,7 +2834,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { exportPdf, PDF_PAGE_SIZES } from "../../../services/PdfService";
 import { useStore } from "../../../store/useStore";
@@ -2981,7 +2984,8 @@ export default function ReportPreviewScreen() {
           headerTitle: "التقرير",
         }}
       />
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        {" "}
         <WebView
           source={{ html: htmlContent }}
           style={styles.webview}
@@ -2989,14 +2993,12 @@ export default function ReportPreviewScreen() {
           scalesPageToFit={Platform.OS === "android" ? true : undefined}
           injectedJavaScript={injectedJS}
         />
-
         {isRegenerating && (
           <View style={styles.regenOverlay}>
             <ActivityIndicator size="small" color="#111827" />
             <Text style={styles.regenText}>جارٍ التحديث…</Text>
           </View>
         )}
-
         {/* Footer is safe-area aware so the export button sits above
             the absolutely-positioned tab bar. */}
         <View style={[styles.footer, { paddingBottom: 16 + BOTTOM_RESERVED }]}>
@@ -3050,13 +3052,13 @@ export default function ReportPreviewScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  container: { flex: 1, padding: 5, backgroundColor: "#f3f4f6" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   webview: { flex: 1, backgroundColor: "transparent" },
 
@@ -8432,6 +8434,12 @@ export const getArFinancialReportHtml = async (
 
         h2 { font-size: 15px; margin-bottom: 10px; }
 
+        /* Transactions table on mobile: still horizontally
+           scrollable (via .table-scroll) but with a tighter
+           floor width so a bit more of the table is visible
+           before the user needs to swipe. */
+        .table-scroll { padding-bottom: 6px; }
+        table.transactions { min-width: 560px; }
         table.transactions th, table.transactions td {
           padding: 6px;
           font-size: 10.5px;
@@ -8474,7 +8482,10 @@ export const getArFinancialReportHtml = async (
           html, body {
             /* Hard-stop any accidental horizontal overflow. The layout
                below is designed to fit; anything that would leak past
-               100% is clipped instead of causing a scrollbar. */
+               100% is clipped instead of causing a scrollbar.
+               NOTE: the transactions table has its own horizontal
+               scroll container (.table-scroll), so it is not affected
+               by this page-level overflow rule. */
             overflow-x: hidden;
             max-width: 100%;
           }
@@ -8500,7 +8511,7 @@ export const getArFinancialReportHtml = async (
           }
           .header-info {
             text-align: left;
-            min-width: 0; /* allow the h1 / meta to shrink on narrow widths */
+            min-width: 0;
           }
           .header-info h1 {
             margin: 0 0 10px 0;
@@ -8540,9 +8551,6 @@ export const getArFinancialReportHtml = async (
             border: 1px solid #e2e8f0;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             page-break-inside: avoid;
-            /* Keep the card from growing past the page even if a child
-               accidentally overflows — clip it instead of pushing the
-               whole page wide. */
             max-width: 100%;
             overflow: hidden;
           }
@@ -8557,7 +8565,6 @@ export const getArFinancialReportHtml = async (
             overflow-wrap: anywhere;
           }
 
-       
           .balance-grid {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -8587,7 +8594,6 @@ export const getArFinancialReportHtml = async (
           }
           .cash { color: #059669; }
           .bank { color: #2563eb; }
-
 
           .loans-totals-grid {
             display: grid;
@@ -8715,8 +8721,28 @@ export const getArFinancialReportHtml = async (
 
           /* ---------------- TRANSACTIONS ---------------- */
           h2 { color: #1e293b; font-size: 20px; margin-bottom: 15px;}
+
+          /* Wrapper that becomes horizontally scrollable when the
+             5-column transactions table is wider than the page.
+             Horizontal swipe is contained here so the rest of the
+             report stays static. Everything else on the page keeps
+             its normal width. */
+          .table-scroll {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+          }
+
+          /* Give the table a floor width so it never crushes below
+             legibility. When the WebView is wider (A4), the table
+             just fills 100% and no scrollbar appears. When narrower
+             (phone preview), the wrapper above scrolls horizontally. */
           table.transactions {
             width: 100%;
+            min-width: 640px;
             max-width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
@@ -8733,10 +8759,10 @@ export const getArFinancialReportHtml = async (
             font-weight: bold;
             color: #334155;
           }
-          table.transactions th:nth-child(1), table.transactions td:nth-child(1) { width: 13%; }
+          table.transactions th:nth-child(1), table.transactions td:nth-child(1) { width: 16%; }
           table.transactions th:nth-child(2), table.transactions td:nth-child(2) { width: 20%; }
-          table.transactions th:nth-child(3), table.transactions td:nth-child(3) { width: 8%; }
-          table.transactions th:nth-child(4), table.transactions td:nth-child(4) { width: 43%; }
+          table.transactions th:nth-child(3), table.transactions td:nth-child(3) { width: 11%; }
+          table.transactions th:nth-child(4), table.transactions td:nth-child(4) { width: 37%; }
           table.transactions th:nth-child(5), table.transactions td:nth-child(5) { width: 15%; text-align: left; }
 
           .type-expense  { background-color: transparent; }
@@ -8854,40 +8880,44 @@ export const getArFinancialReportHtml = async (
         <!-- ========== TRANSACTIONS LOG ========== -->
         <div class="transactions-section">
           <h2>سجل المعاملات (${projectTransactions.length})</h2>
-          <table class="transactions">
-            <tr>
-              <th>التاريخ</th>
-              <th>النوع</th>
-              <th>الدفع</th>
-              <th>الوصف</th>
-              <th>المبلغ</th>
-            </tr>
-            ${projectTransactions
-              .map(
-                (t) => `
-              <tr class="type-${t.type.toLowerCase()}">
-                <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
-                <td>${escapeHtml(getTypeLabel(t.type))}${
-                  t.person
-                    ? ` — ${escapeHtml(t.person.name)}${
-                        t.person.phone ? ` (${escapeHtml(t.person.phone)})` : ""
-                      }`
-                    : ""
-                }</td>
-                <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
-                <td>${escapeHtml(t.description)} ${
-                  t.vendorId ? `(${escapeHtml(t.vendorId)})` : ""
-                }</td>
-                <td>
-                  <span class="${isInflowType(t.type) ? "amount-in" : "amount-out"}">
-                    ${isInflowType(t.type) ? "+" : "-"}${formatCurrency(t.amount)}
-                  </span>
-                </td>
+
+          <!-- Only this table is horizontally scrollable. -->
+          <div class="table-scroll">
+            <table class="transactions">
+              <tr>
+                <th>التاريخ</th>
+                <th>النوع</th>
+                <th>الدفع</th>
+                <th>الوصف</th>
+                <th>المبلغ</th>
               </tr>
-            `,
-              )
-              .join("")}
-          </table>
+              ${projectTransactions
+                .map(
+                  (t) => `
+<tr class="type-${t.type.toLowerCase()}">
+  <td>${new Date(t.date).toLocaleDateString("ar-EG")}</td>
+  <td>${escapeHtml(getTypeLabel(t.type))}</td>
+  <td>${t.method === "CASH" ? "نقدي" : "بنكي"}</td>
+  <td>
+    ${escapeHtml(t.description)}${
+      t.person
+        ? ` — ${escapeHtml(t.person.name)}${
+            t.person.phone ? ` (${escapeHtml(t.person.phone)})` : ""
+          }`
+        : ""
+    }${t.vendorId ? ` (${escapeHtml(t.vendorId)})` : ""}
+  </td>
+  <td>
+    <span class="${isInflowType(t.type) ? "amount-in" : "amount-out"}">
+      ${isInflowType(t.type) ? "+" : "-"}${formatCurrency(t.amount)}
+    </span>
+  </td>
+</tr>
+                `,
+                )
+                .join("")}
+            </table>
+          </div>
         </div>
       </body>
     </html>

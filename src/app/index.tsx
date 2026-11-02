@@ -19,6 +19,10 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import AddTransactionBottomSheet from "../components/AddTransactionBottomSheet";
+import {
+  exportBackupToZip,
+  importBackupFromPicker,
+} from "../services/DataPortService";
 import { resolveType, useStore } from "../store/useStore";
 import { Project } from "../types";
 import { formatCurrency } from "../utils/format";
@@ -41,6 +45,9 @@ export default function DashboardScreen() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
+
+  // ---- Backup in-progress flag so buttons can't be spammed ----
+  const [isBackupBusy, setIsBackupBusy] = useState(false);
 
   // ---- Safe area: reserve top for status bar, bottom for tab bar ----
   const insets = useSafeAreaInsets();
@@ -112,6 +119,76 @@ export default function DashboardScreen() {
   const openTransactionModal = (projectId: string) => {
     setSelectedProjectId(projectId);
     setIsModalVisible(true);
+  };
+
+  // ---------- Backup / Restore ----------
+  const handleExportBackup = async () => {
+    if (isBackupBusy) return;
+    setIsBackupBusy(true);
+    try {
+      await exportBackupToZip();
+    } catch (e: any) {
+      Alert.alert(
+        "خطأ في التصدير",
+        e?.message ?? "تعذّر إنشاء النسخة الاحتياطية.",
+      );
+    } finally {
+      setIsBackupBusy(false);
+    }
+  };
+
+  const handleImportBackup = () => {
+    if (isBackupBusy) return;
+
+    Alert.alert(
+      "استيراد نسخة احتياطية",
+      "سيتم استبدال جميع البيانات الحالية بالبيانات الموجودة في الملف. هل أنت متأكد؟",
+      [
+        { text: "إلغاء", style: "cancel" },
+        {
+          text: "استيراد",
+          style: "destructive",
+          onPress: async () => {
+            setIsBackupBusy(true);
+            try {
+              const result = await importBackupFromPicker();
+
+              if (!result.ok) {
+                if (result.reason === "cancelled") return; // user dismissed picker
+                Alert.alert(
+                  "فشل الاستيراد",
+                  result.reason === "not-an-ardab-backup"
+                    ? "الملف المحدد ليس نسخة احتياطية من هذا التطبيق."
+                    : result.reason === "backup-too-new"
+                      ? "هذه النسخة الاحتياطية من إصدار أحدث من التطبيق. يُرجى تحديث التطبيق أولاً."
+                      : result.reason === "invalid-zip" ||
+                          result.reason === "no-data-file"
+                        ? "الملف تالف أو غير صالح."
+                        : result.reason === "malformed-data"
+                          ? "البيانات داخل الملف غير مكتملة."
+                          : `السبب: ${result.reason ?? "غير معروف"}`,
+                );
+                return;
+              }
+
+              const s = result.summary!;
+              Alert.alert(
+                "تم الاستيراد بنجاح",
+                `${s.projects} مشروع، ${s.transactions} معاملة، ${s.invoices} فاتورة.`,
+              );
+            } catch (e: any) {
+              Alert.alert(
+                "خطأ في الاستيراد",
+                e?.message ?? "تعذّر استيراد النسخة الاحتياطية.",
+              );
+            } finally {
+              setIsBackupBusy(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   // ---------- Date range helpers ----------
@@ -470,6 +547,44 @@ export default function DashboardScreen() {
             >
               <Text style={styles.primaryBtnText}>إنشاء مشروع</Text>
             </TouchableOpacity>
+
+            {/* ====== BACKUP / RESTORE ====== */}
+            <View style={styles.backupSection}>
+              <View style={styles.backupDivider} />
+              <Text style={styles.backupSectionTitle}>النسخ الاحتياطي</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.backupBtn,
+                  styles.backupBtnExport,
+                  isBackupBusy && styles.backupBtnDisabled,
+                ]}
+                onPress={handleExportBackup}
+                disabled={isBackupBusy}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.backupBtnExportText}>
+                  {isBackupBusy
+                    ? "جارٍ التصدير…"
+                    : "تصدير نسخة احتياطية (.zip)"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.backupBtn,
+                  styles.backupBtnImport,
+                  isBackupBusy && styles.backupBtnDisabled,
+                ]}
+                onPress={handleImportBackup}
+                disabled={isBackupBusy}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.backupBtnImportText}>
+                  {isBackupBusy ? "جارٍ الاستيراد…" : "استيراد نسخة احتياطية"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Transaction Modal */}
@@ -793,5 +908,49 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     fontWeight: "700",
     fontSize: 14,
+  },
+
+  // ====== BACKUP / RESTORE ======
+  backupSection: {
+    marginTop: 24,
+  },
+  backupDivider: {
+    height: 1,
+    backgroundColor: "#e5e7eb",
+    marginBottom: 16,
+  },
+  backupSectionTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+    textAlign: "right",
+    marginBottom: 12,
+  },
+  backupBtn: {
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  backupBtnExport: {
+    backgroundColor: "#0F172A",
+  },
+  backupBtnExportText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  backupBtnImport: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  backupBtnImportText: {
+    color: "#DC2626",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  backupBtnDisabled: {
+    opacity: 0.5,
   },
 });
